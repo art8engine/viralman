@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "viralman",
+  "description": "Write non-AI-feeling viral / promo posts for Reddit, X, and LinkedIn from inside Claude Code.",
+  "owner": {
+    "name": "viralman contributors"
+  },
+  "plugins": [
+    {
+      "name": "viralman",
+      "description": "Generates platform-tuned posts that don't read like AI, then publishes them to the user's own Reddit / LinkedIn / X accounts after explicit confirmation.",
+      "version": "0.1.0",
+      "source": "./",
+      "category": "marketing",
+      "homepage": "https://github.com/rlaope/viralman",
+      "tags": [
+        "viral",
+        "social-posting",
+        "reddit",
+        "twitter",
+        "linkedin",
+        "growth"
+      ]
+    }
+  ],
+  "version": "0.1.0"
+}

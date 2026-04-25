@@ -1,0 +1,24 @@
+{
+  "name": "viralman",
+  "version": "0.1.0",
+  "description": "Claude Code agent that writes platform-tuned, non-AI-feeling viral / promo posts for Reddit, X (Twitter), and LinkedIn — and posts them under the user's own accounts with explicit permission.",
+  "author": {
+    "name": "viralman contributors"
+  },
+  "repository": "https://github.com/rlaope/viralman",
+  "homepage": "https://github.com/rlaope/viralman",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "viral",
+    "marketing",
+    "reddit",
+    "twitter",
+    "linkedin",
+    "social-posting"
+  ],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "agents": "./agents/"
+}

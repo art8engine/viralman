@@ -27,7 +27,7 @@ Most "AI social poster" tools produce posts that anyone can spot from across the
 
 ```bash
 # from anywhere
-claude plugin marketplace add https://github.com/rlaope/viralman
+claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 

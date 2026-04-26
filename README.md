@@ -46,7 +46,7 @@ The wizard walks you through:
 |---|---|---|
 | Reddit | ✅ | Register a *script* app at https://www.reddit.com/prefs/apps. |
 | LinkedIn | ✅ | Register at https://www.linkedin.com/developers/apps, request `w_member_social` scope, complete the local OAuth callback. |
-| X (Twitter) | 💰 paid | Optional. v2 write tier is paid. If you skip it, viralman opens a pre-filled `intent/tweet` URL in your browser and you click post. |
+| X (Twitter) | ✅ Free tier | The X API free tier allows ~1,500 posts/month, plenty for personal use. Register at https://developer.twitter.com, generate API + access keys with read+write permission. If you skip it, viralman opens a pre-filled `intent/tweet` URL in your browser and you click post. |
 
 Credentials are written to `~/.viralman/.env` with `chmod 600`. **They never enter the LLM context** — the agent shells out to scripts that read the env directly.
 

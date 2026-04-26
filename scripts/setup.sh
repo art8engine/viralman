@@ -81,9 +81,11 @@ fi
 echo
 
 # --- Twitter / X ---
-echo "== X / Twitter (paid API for write) =="
-echo "Skipping this works fine — viralman will open compose URLs instead."
-if skip_q "configure X API access? (paid)"; then
+echo "== X / Twitter (free tier supports ~1,500 posts/month) =="
+echo "Register at https://developer.twitter.com, set app permissions to Read+Write,"
+echo "then generate API Key/Secret and Access Token/Secret."
+echo "Skipping this still works — viralman will open compose URLs instead."
+if skip_q "configure X API access?"; then
   ask TWITTER_API_KEY "  API key" 1
   ask TWITTER_API_SECRET "  API secret" 1
   ask TWITTER_ACCESS_TOKEN "  access token" 1

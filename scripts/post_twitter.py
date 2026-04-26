@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Post to X (Twitter). If TWITTER_BEARER + access tokens are set, post via API.
+"""Post to X (Twitter). If TWITTER_API_KEY + access tokens are set, post via API
+(the free tier supports ~1,500 posts/month, plenty for personal use).
 Otherwise build a `https://twitter.com/intent/tweet?text=...` URL, open it in
 the browser, and print it to stdout for the user to one-click send.
 

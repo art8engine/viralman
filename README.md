@@ -15,6 +15,7 @@ Most "AI social poster" tools produce posts that anyone can spot from across the
 ## What you get
 
 - `/viral <intent>` — slash command that drives the whole flow.
+- `/viralman-login-{reddit,twitter,linkedin}` — per-platform credential setup with secrets piped through `read -s` so they never hit the LLM context.
 - Four voice modes: **growth-story** (struggle → insight → takeaway), **casual-hype** (no-way / this-slaps register), **show-and-tell** (project launch), **contrarian-take**.
 - Per-platform register (a Reddit post is not a LinkedIn post) and length-aware trimming.
 - Always-confirm safety default. Override with `--yes`.
@@ -33,22 +34,21 @@ claude plugin install viralman
 
 Or symlink the repo into `~/.claude/plugins/` for local dev.
 
-### Credentials (one-time)
+### Credentials (one-time, per platform)
 
-```bash
-cd ~/.claude/plugins/viralman
-./scripts/setup.sh
+Three dedicated skills walk you through each platform separately. Run only the ones you need:
+
+```
+/viralman-login-reddit       # ~3 min, free
+/viralman-login-twitter      # ~5 min, free tier (~1,500 posts/month). Optional — compose URL fallback works without it.
+/viralman-login-linkedin     # ~10 min, free, OAuth dance + 60-day token refresh
 ```
 
-The wizard walks you through:
+Each skill walks you through the platform's developer portal step by step. **Secrets never enter the LLM context** — the skills have you pipe passwords/tokens through `read -s` directly into a save script. The agent only sees non-secret values like usernames and client_ids.
 
-| Platform | Free? | Steps |
-|---|---|---|
-| Reddit | ✅ | Register a *script* app at https://www.reddit.com/prefs/apps. |
-| LinkedIn | ✅ | Register at https://www.linkedin.com/developers/apps, request `w_member_social` scope, complete the local OAuth callback. |
-| X (Twitter) | ✅ Free tier | The X API free tier allows ~1,500 posts/month, plenty for personal use. Register at https://developer.twitter.com, generate API + access keys with read+write permission. If you skip it, viralman opens a pre-filled `intent/tweet` URL in your browser and you click post. |
+Credentials are written to `~/.viralman/.env` with `chmod 600`. The `post_*.py` scripts are the only place that file is read.
 
-Credentials are written to `~/.viralman/.env` with `chmod 600`. **They never enter the LLM context** — the agent shells out to scripts that read the env directly.
+There's also a non-interactive shell wizard if you prefer doing it all at once: `./scripts/setup.sh`.
 
 ## Usage
 
@@ -90,7 +90,11 @@ See [the plan document](.claude/plans/) or browse the tree:
 viralman/
 ├── .claude-plugin/   # plugin & marketplace manifests
 ├── commands/         # /viral slash command
-├── skills/viral/     # multi-step flow
+├── skills/
+│   ├── viral/                      # main /viral flow
+│   ├── viralman-login-reddit/      # per-platform setup skills
+│   ├── viralman-login-twitter/
+│   └── viralman-login-linkedin/
 ├── agents/           # writer, sniffer, publisher
 ├── voice/            # ai-tells, platform-norms, mode templates, reference corpus
 ├── scripts/          # setup.sh + per-platform posters

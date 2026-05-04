@@ -8,6 +8,7 @@
       <p data-i18n="page.gm.intro">Reach developers who likely care about your project — those who starred similar repos on GitHub. viralman drafts a personalized email each, sends via SMTP, with rate limiting and one-click unsubscribe baked in.</p>
     </div>
   </header>
+
   {% include "_project.html" %}
 
   <section class="card">
@@ -21,24 +22,53 @@
     <div class="grid three">
       <label><span data-i18n="tg.max_users">max users</span><input type="number" id="gm-max" value="100" min="1" max="10000"></label>
       <label><span data-i18n="tg.min_stars">min stars</span><input type="number" id="gm-min-stars" value="200" min="1"></label>
-      <label class="check end"><input type="checkbox" id="gm-template"><span data-i18n="tg.template_only">template-only (cheaper)</span></label>
+      <div></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="gm-collect" data-i18n="gitmail.collect">collect recipients</button>
+      <button class="btn ghost" id="gm-collect-cancel" disabled data-i18n="cancel">cancel</button>
+      <span class="meta" id="gm-collect-meta">—</span>
+    </div>
+    <div class="prog">
+      <div class="prog-step" data-step="analyse"><span class="dot"></span><span data-i18n="step.analyse">analyse</span></div>
+      <div class="prog-step" data-step="search"><span class="dot"></span><span data-i18n="step.search">search</span></div>
+      <div class="prog-step" data-step="recipients"><span class="dot"></span><span data-i18n="step.recipients">recipients</span></div>
+    </div>
+
+    <div class="recipients-wrap" id="gm-rec-wrap" hidden>
+      <div class="row vm-between rec-controls">
+        <label class="check"><input type="checkbox" id="gm-rec-all"><span data-i18n="gitmail.select_all">select all on this page</span></label>
+        <span class="meta" id="gm-rec-summary">0 selected</span>
+      </div>
+      <table class="rec-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th data-i18n="gitmail.col.login">github</th>
+            <th data-i18n="gitmail.col.email">email</th>
+            <th data-i18n="gitmail.col.starred">starred similar repo</th>
+          </tr>
+        </thead>
+        <tbody id="gm-rec-tbody"></tbody>
+      </table>
+      <div class="rec-pagination">
+        <button class="btn small ghost" id="gm-rec-prev" data-i18n="gitmail.prev">prev</button>
+        <span class="meta" id="gm-rec-page">1 / 1</span>
+        <button class="btn small ghost" id="gm-rec-next" data-i18n="gitmail.next">next</button>
+      </div>
     </div>
   </section>
 
   <section class="card actions">
     <label class="check"><input type="checkbox" id="gm-dryrun" checked><span data-i18n="send.dryrun">dry-run (don't actually send)</span></label>
     <label class="check"><input type="checkbox" id="gm-confirm"><span data-i18n="send.confirm">I confirm I want to send under my account</span></label>
-    <button class="btn primary" id="gm-start" disabled data-i18n="gitmail.start">start</button>
-    <button class="btn ghost" id="gm-cancel" disabled data-i18n="cancel">cancel</button>
+    <button class="btn primary big" id="gm-send" disabled><span data-i18n="gitmail.send_selected">send selected</span> (<span id="gm-send-count">0</span>)</button>
+    <button class="btn ghost" id="gm-send-cancel" disabled data-i18n="cancel">cancel</button>
   </section>
 
   <section class="card">
     <h2 data-i18n="gitmail.progress">progress</h2>
     <div class="prog">
-      <div class="prog-step" data-step="analyse"><span class="dot"></span><span data-i18n="step.analyse">analyse</span></div>
-      <div class="prog-step" data-step="search"><span class="dot"></span><span data-i18n="step.search">search</span></div>
-      <div class="prog-step" data-step="recipients"><span class="dot"></span><span data-i18n="step.recipients">recipients</span></div>
-      <div class="prog-step" data-step="compose"><span class="dot"></span><span data-i18n="step.compose">compose</span></div>
       <div class="prog-step" data-step="send"><span class="dot"></span><span data-i18n="step.send">send</span></div>
     </div>
     <pre class="log" id="gm-log" data-i18n="send.no_run">no run yet</pre>

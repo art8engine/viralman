@@ -43,6 +43,8 @@ sys.path.insert(0, str(SCRIPTS / "lib"))
 from creds import load as load_creds, CredsError  # noqa: E402
 from compose_urls import twitter_intent, reddit_submit  # noqa: E402
 from sniffer_check import check as sniff_check  # noqa: E402
+import github_search  # noqa: E402
+import smtp_send  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -395,6 +397,172 @@ def _fetch_reddit_threads(subs, keywords, per_sub=5):
     return out[:15]
 
 
+# ─── In-process gitmail collect / send (no subprocess) ───
+
+def _run_collect_job(job: "GitmailJob") -> None:
+    try:
+        try:
+            creds = load_creds()
+        except CredsError:
+            creds = {}
+        token = creds.get("GITHUB_TOKEN")
+        desc = job.args.get("description", "")
+        job.append({"event": "analyse_start"})
+        analysis = github_search.analyse_project(desc)
+        job.append({"event": "analyse_done",
+                     "keywords": analysis.get("keywords", []),
+                     "topics": analysis.get("topics", [])})
+        if not analysis.get("topics") and not analysis.get("keywords"):
+            job.append({"event": "fatal",
+                         "reason": "no usable keywords found in description"})
+            return
+        job.append({"event": "search_start"})
+        own_repo = None
+        url = job.args.get("project_url") or ""
+        if "github.com/" in url:
+            tail = url.split("github.com/", 1)[1].rstrip("/").split("/")
+            if len(tail) >= 2:
+                own_repo = f"{tail[0]}/{tail[1]}"
+        repos = github_search.search_similar_repos(
+            topics=analysis.get("topics", []),
+            keywords=analysis.get("keywords", []),
+            min_stars=int(job.args.get("min_stars") or 200),
+            limit=int(job.args.get("repo_limit") or 15),
+            token=token,
+            exclude_full_names={own_repo} if own_repo else None,
+        )
+        job.append({"event": "search_done", "count": len(repos),
+                     "repos": [{"full_name": r["full_name"], "stars": r["stars"]}
+                                for r in repos]})
+        if not repos:
+            job.append({"event": "fatal", "reason": "no similar repos found"})
+            return
+        max_users = min(int(job.args.get("max_users") or 100), 10000)
+        job.append({"event": "recipients_start", "target": max_users,
+                     "repo_count": len(repos)})
+        seen: set[str] = set()
+        recipients: List[Dict[str, Any]] = []
+        iters = [(r, github_search.iter_stargazers(r["full_name"],
+                                                     max_users=max_users * 5,
+                                                     token=token))
+                  for r in repos]
+        while iters and len(recipients) < max_users and job.status != "cancelled":
+            next_iters = []
+            for repo, it in iters:
+                try:
+                    user = next(it)
+                except StopIteration:
+                    continue
+                login = user.get("login")
+                if not login or login in seen:
+                    next_iters.append((repo, it))
+                    continue
+                seen.add(login)
+                if job.status == "cancelled":
+                    break
+                email = github_search.resolve_user_email(login, token=token)
+                if email:
+                    rec = {
+                        "login": login,
+                        "email": email,
+                        "starred_repo": repo["full_name"],
+                        "profile": user.get("html_url", f"https://github.com/{login}"),
+                    }
+                    recipients.append(rec)
+                    job.append({"event": "recipient",
+                                 "count": len(recipients),
+                                 "target": max_users,
+                                 **rec})
+                    if len(recipients) >= max_users:
+                        break
+                next_iters.append((repo, it))
+            iters = next_iters
+        job.append({"event": "recipients_done", "count": len(recipients)})
+        job.append({"event": "done", "recipients": recipients,
+                     "analysis": analysis})
+    except Exception as e:
+        job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
+
+
+def _run_send_job(job: "GitmailJob") -> None:
+    try:
+        creds = load_creds()
+        recipients = job.args.get("recipients") or []
+        body_template = job.args.get("body") or ""
+        subject = job.args.get("subject") or f"about {job.args.get('project_name', 'your project')}"
+        dry_run = bool(job.args.get("dry_run", True))
+        unsubscribe_base = job.args.get("_url_root") or "http://localhost:8765"
+
+        def fill(rec: Dict[str, str]) -> str:
+            return (body_template
+                    .replace("{{login}}", rec.get("login", ""))
+                    .replace("{{starred_repo}}", rec.get("starred_repo", "")))
+
+        if dry_run:
+            job.append({"event": "send_dry_run_start", "count": len(recipients)})
+            previews = []
+            for r in recipients:
+                if job.status == "cancelled":
+                    break
+                body = fill(r)
+                preview = smtp_send.render_preview(
+                    creds, to_addr=r["email"], subject=subject, body=body,
+                    unsubscribe_base=unsubscribe_base,
+                )
+                previews.append({**r, "subject": subject, "body": body,
+                                  "preview_headers": preview["headers"]})
+                job.append({"event": "send_preview", "to": r["email"],
+                             "subject": subject})
+            job.append({"event": "send_dry_run_done", "count": len(previews)})
+            job.append({"event": "done",
+                         "send": {"sent": 0, "failed": 0, "previews": previews}})
+            return
+
+        try:
+            smtp, limiter = smtp_send.open_session(creds)
+        except smtp_send.SmtpError as e:
+            job.append({"event": "fatal", "reason": str(e)})
+            return
+
+        sent = 0
+        failed = 0
+        failures: List[Dict[str, str]] = []
+        job.append({"event": "send_start", "count": len(recipients)})
+        try:
+            for r in recipients:
+                if job.status == "cancelled":
+                    break
+                limiter.wait()
+                body = fill(r)
+                try:
+                    result = smtp_send.send_one(
+                        smtp, creds, to_addr=r["email"], subject=subject,
+                        body=body, unsubscribe_base=unsubscribe_base,
+                    )
+                    sent += 1
+                    job.append({"event": "send_ok", "to": r["email"],
+                                 "login": r.get("login", ""),
+                                 "message_id": result.get("message_id", ""),
+                                 "sent": sent, "target": len(recipients)})
+                except Exception as e:
+                    failed += 1
+                    failures.append({"login": r.get("login", ""),
+                                      "email": r["email"], "error": str(e)})
+                    job.append({"event": "send_fail", "to": r["email"],
+                                 "error": str(e), "failed": failed})
+        finally:
+            try:
+                smtp.quit()
+            except Exception:
+                pass
+        job.append({"event": "send_done", "sent": sent, "failed": failed})
+        job.append({"event": "done",
+                     "send": {"sent": sent, "failed": failed,
+                               "failures": failures}})
+    except Exception as e:
+        job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
+
+
 CREDS_BY_PLATFORM = {
     "twitter": ["TWITTER_API_KEY", "TWITTER_API_SECRET",
                  "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET"],
@@ -657,6 +825,41 @@ def register(app) -> None:
         })
 
     # ----- reddit thread scraping (read-only, no auth needed) -----
+
+    # ----- gitmail collect (recipients only, no send) -----
+
+    @app.post("/api/gitmail/collect")
+    def gitmail_collect():
+        data = request.get_json(silent=True) or {}
+        if not (data.get("description") or "").strip():
+            return jsonify({"ok": False, "error": "description required"}), 400
+        max_users = int(data.get("max_users") or 100)
+        if max_users < 1 or max_users > 10000:
+            return jsonify({"ok": False, "error": "max_users must be 1..10000"}), 400
+        job_id = uuid.uuid4().hex[:12]
+        job = GitmailJob(job_id, {**data, "_kind": "collect"})
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=_run_collect_job, args=(job,), daemon=True).start()
+        return jsonify({"ok": True, "job_id": job_id})
+
+    # ----- gitmail send (selected recipients only) -----
+
+    @app.post("/api/gitmail/send")
+    def gitmail_send():
+        data = request.get_json(silent=True) or {}
+        recipients = data.get("recipients") or []
+        if not recipients:
+            return jsonify({"ok": False, "error": "no recipients selected"}), 400
+        if not (data.get("body") or "").strip():
+            return jsonify({"ok": False, "error": "email body required"}), 400
+        job_id = uuid.uuid4().hex[:12]
+        url_root = request.url_root.rstrip("/") or "http://localhost:8765"
+        job = GitmailJob(job_id, {**data, "_kind": "send", "_url_root": url_root})
+        with JOBS_LOCK:
+            JOBS[job_id] = job
+        threading.Thread(target=_run_send_job, args=(job,), daemon=True).start()
+        return jsonify({"ok": True, "job_id": job_id})
 
     @app.post("/api/scrape/reddit-threads")
     def scrape_reddit_threads():

@@ -332,3 +332,35 @@ input:focus, textarea:focus, select:focus { border-color: var(--bd-3); }
 .creds-form label { font-size: 12.5px; }
 .creds-form input { margin-top: 4px; }
 .creds-form button { justify-self: start; }
+
+/* ─── Gitmail recipients table ─── */
+.recipients-wrap { margin-top: 18px; }
+.rec-controls {
+  background: var(--bg-3); border: 1px solid var(--bd);
+  border-radius: 9px; padding: 10px 14px; margin-bottom: 8px;
+}
+.rec-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--bg-3); border: 1px solid var(--bd); border-radius: 9px;
+  overflow: hidden; font-size: 13px;
+}
+.rec-table thead {
+  background: var(--bg-4); color: var(--fg-3);
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;
+}
+.rec-table th, .rec-table td {
+  text-align: left; padding: 9px 14px;
+  border-bottom: 1px solid var(--bd);
+}
+.rec-table tbody tr:hover { background: var(--bg-4); }
+.rec-table tbody tr:last-child td { border-bottom: 0; }
+.rec-table td:first-child, .rec-table th:first-child {
+  width: 32px; padding-right: 0;
+}
+.rec-table input[type="checkbox"] { accent-color: var(--ok); width: 16px; height: 16px; }
+.rec-table .rec-email { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
+.rec-table a { color: var(--link); }
+.rec-pagination {
+  display: flex; align-items: center; gap: 12px; justify-content: center;
+  padding: 12px 0 0;
+}

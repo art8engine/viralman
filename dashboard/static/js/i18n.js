@@ -123,6 +123,15 @@ window.VM_I18N = {
     'page.rd.intro': 'Reddit post with title and body. Drafted from your project, posted to a chosen subreddit, with a side panel that scans recent threads you could reply to.',
     'page.gm.title': 'Gitmail',
     'page.gm.intro': 'Reach developers who likely care about your project — those who starred similar repos on GitHub. viralman drafts a personalized email each, sends via SMTP, with rate limiting and one-click unsubscribe baked in.',
+
+    'gitmail.collect': 'collect recipients',
+    'gitmail.select_all': 'select all on this page',
+    'gitmail.send_selected': 'send selected',
+    'gitmail.col.login': 'github',
+    'gitmail.col.email': 'email',
+    'gitmail.col.starred': 'starred similar repo',
+    'gitmail.prev': 'prev',
+    'gitmail.next': 'next',
   },
 
   ko: {
@@ -248,6 +257,15 @@ window.VM_I18N = {
     'page.rd.intro': 'Reddit 포스트 (제목 + 본문). 프로젝트에서 자동 초안, 선택한 서브레딧에 게시, 옆 패널에서 댓글 달 만한 최근 스레드 스캔.',
     'page.gm.title': 'Gitmail',
     'page.gm.intro': '내 프로젝트에 관심 있을 만한 개발자에게 메일 — 비슷한 GitHub 레포에 ★ 누른 사람들. viralman이 한 명씩 개인화 메일을 작성하고 SMTP로 발송. 분당 제한과 원클릭 구독해지 자동.',
+
+    'gitmail.collect': '수신자 수집',
+    'gitmail.select_all': '이 페이지 전체 선택',
+    'gitmail.send_selected': '선택한 사람에게 발송',
+    'gitmail.col.login': 'github',
+    'gitmail.col.email': '이메일',
+    'gitmail.col.starred': '★ 누른 레포',
+    'gitmail.prev': '이전',
+    'gitmail.next': '다음',
   },
 
   zh: {
@@ -373,6 +391,15 @@ window.VM_I18N = {
     'page.rd.intro': 'Reddit 帖子（标题 + 正文）。从项目自动起草，发到选中的子版块；侧边面板还能扫最近可回复的帖子。',
     'page.gm.title': 'Gitmail',
     'page.gm.intro': '给可能关心你项目的开发者发邮件 — 那些 star 过同类 GitHub 仓库的人。viralman 给每个人写一封个性化邮件，通过 SMTP 发出，自带速率限制和一键退订。',
+
+    'gitmail.collect': '收集收件人',
+    'gitmail.select_all': '选中本页全部',
+    'gitmail.send_selected': '发给选中的人',
+    'gitmail.col.login': 'github',
+    'gitmail.col.email': '邮箱',
+    'gitmail.col.starred': 'star 过的同类仓库',
+    'gitmail.prev': '上一页',
+    'gitmail.next': '下一页',
   },
 
   ja: {
@@ -498,6 +525,15 @@ window.VM_I18N = {
     'page.rd.intro': 'Reddit 投稿（タイトル + 本文）。プロジェクトから自動下書き、選んだサブレディットに投稿。サイドパネルでは返信できそうな最近のスレッドをスキャンできる。',
     'page.gm.title': 'Gitmail',
     'page.gm.intro': 'プロジェクトに関心を持ちそうな開発者にメール — GitHub で類似リポにスターした人たち。viralman が一人ずつ個別メールを書き、SMTP で送信。レート制限とワンクリック解除を内蔵。',
+
+    'gitmail.collect': '受信者を収集',
+    'gitmail.select_all': 'このページを全選択',
+    'gitmail.send_selected': '選択した人に送信',
+    'gitmail.col.login': 'github',
+    'gitmail.col.email': 'メール',
+    'gitmail.col.starred': 'スターした類似リポ',
+    'gitmail.prev': '前へ',
+    'gitmail.next': '次へ',
   },
 };
 

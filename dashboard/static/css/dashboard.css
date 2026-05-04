@@ -98,13 +98,12 @@ button { font-family: inherit; }
 .creds-form input { margin-top: 3px; }
 .creds-form button { justify-self: start; }
 
-.claudemax-status {
-  display: inline-block; padding: 6px 12px; border-radius: 6px;
-  font-family: var(--mono); font-size: 12px; margin: 8px 0 16px;
-  border: 1px solid var(--bd-2); color: var(--fg-3);
+.cli-status {
+  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  margin-left: 8px;
 }
-.claudemax-status.ok { color: var(--ok); border-color: #2c4030; }
-.claudemax-status.bad { color: var(--err); border-color: #4a2222; }
+.cli-status.ok { color: var(--ok); }
+.cli-status.bad { color: var(--err); }
 
 .hd-connect { position: relative; }
 .hd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); }

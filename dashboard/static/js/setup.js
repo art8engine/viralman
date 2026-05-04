@@ -51,21 +51,6 @@
       });
     });
 
-    // Claude Max status check
-    (async () => {
-      const r = await VM.fetchJSON('/api/creds/status');
-      const el = document.getElementById('claudemax-status');
-      if (!el) return;
-      const cli = (r.data || {}).claude_cli || {};
-      if (cli.available) {
-        el.className = 'claudemax-status ok';
-        el.textContent = `✓ claude CLI detected at ${cli.path}` + (cli.version ? ` (${cli.version})` : '');
-      } else {
-        el.className = 'claudemax-status bad';
-        el.textContent = '✗ claude CLI not found on PATH';
-      }
-    })();
-
     // Update redirect URI hints with the current origin (so users see actual URL).
     const origin = window.location.origin;
     ['twitter', 'reddit', 'linkedin'].forEach(p => {

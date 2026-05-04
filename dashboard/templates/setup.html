@@ -9,7 +9,6 @@
     <button class="setup-tab" data-tab="reddit">Reddit</button>
     <button class="setup-tab" data-tab="linkedin">LinkedIn</button>
     <button class="setup-tab" data-tab="gitmail">Gitmail (SMTP + GitHub + LLM)</button>
-    <button class="setup-tab" data-tab="claudemax">Claude Max</button>
   </nav>
 
   <!-- Twitter -->
@@ -144,19 +143,11 @@
     </div>
   </section>
 
-  <!-- Claude Max via Claude Code CLI -->
-  <section class="setup-pane hidden" data-pane="claudemax">
-    <h2>Claude Max via Claude Code CLI</h2>
-    <p class="hint">If you already use Claude Code, viralman can route LLM calls through your installed <code>claude</code> binary instead of needing an API key. Your Max plan quota applies.</p>
-    <div id="claudemax-status" class="claudemax-status">checking…</div>
-    <ol class="steps">
-      <li>install Claude Code if you don't have it: <a href="https://docs.claude.com/en/docs/claude-code/quickstart" target="_blank">docs.claude.com/claude-code</a>.</li>
-      <li>run <code>claude</code> once to log in to your Anthropic account (uses your Max plan).</li>
-      <li>back in this dashboard, on any page, pick <strong>provider: claude-cli</strong> in the project block. Generate.</li>
-      <li>no API key required. The dashboard checks for the binary on every page load.</li>
-    </ol>
-    <p class="hint">Want a key-based fallback instead? Save an <code>ANTHROPIC_API_KEY</code> on the Gitmail tab.</p>
-  </section>
+  <p class="hint" style="margin-top:24px">
+    Using <strong>Claude Max</strong>? You don't set it up here. If <code>claude</code>
+    (Claude Code) is on your PATH, just pick provider <strong>"claude (Max via CLI)"</strong>
+    in the project block on any page. The dashboard auto-detects the binary; no API key needed.
+  </p>
 </div>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/setup.js') }}"></script>{% endblock %}

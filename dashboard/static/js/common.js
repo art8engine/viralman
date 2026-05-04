@@ -200,6 +200,18 @@
   async function refreshConnectStatus() {
     const r = await fetchJSON('/api/creds/status');
     if (!r.ok || !r.data) return;
+    // Claude Max (CLI) inline indicator next to provider select
+    const cliEl = document.getElementById('cli-status');
+    if (cliEl) {
+      const cli = r.data.claude_cli || {};
+      if (cli.available) {
+        cliEl.textContent = `✓ Max via CLI ready${cli.version ? ' (' + cli.version + ')' : ''}`;
+        cliEl.className = 'cli-status ok';
+      } else {
+        cliEl.textContent = '✗ install Claude Code to use Max plan';
+        cliEl.className = 'cli-status bad';
+      }
+    }
     let configured = 0;
     for (const p of PLATFORMS) {
       const row = document.querySelector(`.hd-row[data-platform="${p}"] .hd-st`);

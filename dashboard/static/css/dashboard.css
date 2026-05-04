@@ -119,6 +119,20 @@ button { font-family: inherit; }
 .main { padding: 28px 28px 64px; max-width: 960px; margin: 0 auto; }
 .page { display: grid; gap: 18px; }
 
+.page-intro {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 4px 0 4px;
+  margin-bottom: -4px;
+}
+.page-intro .brand-icon { width: 26px; height: 26px; margin-top: 2px; }
+.page-intro h1 {
+  margin: 0 0 4px; font-size: 22px; font-weight: 700;
+  letter-spacing: -0.01em; color: var(--fg);
+}
+.page-intro p {
+  margin: 0; font-size: 14px; color: var(--fg-2); max-width: 70ch;
+}
+
 .card {
   background: var(--bg-2); border: 1px solid var(--bd); border-radius: 14px;
   padding: 22px 24px;

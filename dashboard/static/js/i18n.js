@@ -116,6 +116,13 @@ window.VM_I18N = {
     'cta.first.title': 'First time here?',
     'cta.first.body': 'Register at least one platform in setup before you can post. Takes 3 minutes.',
     'cta.first.go': 'go to setup →',
+
+    'page.tw.title': 'Twitter / X',
+    'page.tw.intro': 'Tweet or thread for X. Drafted from your project description, edited inline, posted via API or compose-URL fallback.',
+    'page.rd.title': 'Reddit',
+    'page.rd.intro': 'Reddit post with title and body. Drafted from your project, posted to a chosen subreddit, with a side panel that scans recent threads you could reply to.',
+    'page.gm.title': 'Gitmail',
+    'page.gm.intro': 'Reach developers who likely care about your project — those who starred similar repos on GitHub. viralman drafts a personalized email each, sends via SMTP, with rate limiting and one-click unsubscribe baked in.',
   },
 
   ko: {
@@ -234,6 +241,13 @@ window.VM_I18N = {
     'cta.first.title': '처음이세요?',
     'cta.first.body': '게시하려면 먼저 setup에서 플랫폼 한 개 이상 연결. 3분이면 끝.',
     'cta.first.go': 'setup으로 이동 →',
+
+    'page.tw.title': 'Twitter / X',
+    'page.tw.intro': 'X용 트윗 또는 스레드. 프로젝트 설명에서 자동 초안, 인라인 편집, API 또는 compose URL로 게시.',
+    'page.rd.title': 'Reddit',
+    'page.rd.intro': 'Reddit 포스트 (제목 + 본문). 프로젝트에서 자동 초안, 선택한 서브레딧에 게시, 옆 패널에서 댓글 달 만한 최근 스레드 스캔.',
+    'page.gm.title': 'Gitmail',
+    'page.gm.intro': '내 프로젝트에 관심 있을 만한 개발자에게 메일 — 비슷한 GitHub 레포에 ★ 누른 사람들. viralman이 한 명씩 개인화 메일을 작성하고 SMTP로 발송. 분당 제한과 원클릭 구독해지 자동.',
   },
 
   zh: {
@@ -352,6 +366,13 @@ window.VM_I18N = {
     'cta.first.title': '第一次来？',
     'cta.first.body': '发帖前需要先在 setup 里连接至少一个平台。3 分钟就好。',
     'cta.first.go': '去 setup →',
+
+    'page.tw.title': 'Twitter / X',
+    'page.tw.intro': 'X 推文或串文。从项目描述自动起草，可直接编辑，通过 API 或 compose URL 发出去。',
+    'page.rd.title': 'Reddit',
+    'page.rd.intro': 'Reddit 帖子（标题 + 正文）。从项目自动起草，发到选中的子版块；侧边面板还能扫最近可回复的帖子。',
+    'page.gm.title': 'Gitmail',
+    'page.gm.intro': '给可能关心你项目的开发者发邮件 — 那些 star 过同类 GitHub 仓库的人。viralman 给每个人写一封个性化邮件，通过 SMTP 发出，自带速率限制和一键退订。',
   },
 
   ja: {
@@ -470,6 +491,13 @@ window.VM_I18N = {
     'cta.first.title': '初めてなら',
     'cta.first.body': '投稿する前に setup でプラットフォームを 1 つ以上連携。3 分で終わる。',
     'cta.first.go': 'setup へ →',
+
+    'page.tw.title': 'Twitter / X',
+    'page.tw.intro': 'X 用のツイートまたはスレッド。プロジェクトの説明から自動下書き、インラインで編集、API または compose URL で投稿。',
+    'page.rd.title': 'Reddit',
+    'page.rd.intro': 'Reddit 投稿（タイトル + 本文）。プロジェクトから自動下書き、選んだサブレディットに投稿。サイドパネルでは返信できそうな最近のスレッドをスキャンできる。',
+    'page.gm.title': 'Gitmail',
+    'page.gm.intro': 'プロジェクトに関心を持ちそうな開発者にメール — GitHub で類似リポにスターした人たち。viralman が一人ずつ個別メールを書き、SMTP で送信。レート制限とワンクリック解除を内蔵。',
   },
 };
 

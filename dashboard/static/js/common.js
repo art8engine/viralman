@@ -223,6 +223,12 @@
     if (ct) ct.textContent = `${configured}/4`;
     const dot = document.getElementById('connect-dot');
     if (dot) dot.className = 'hd-dot ' + (configured === 4 ? 'ok' : configured ? 'partial' : '');
+    // First-time CTA — show only when no platform configured
+    const cta = document.getElementById('first-time-cta');
+    if (cta) {
+      if (configured === 0) cta.classList.remove('hidden');
+      else cta.classList.add('hidden');
+    }
   }
 
   // ───── Provider inline status ─────

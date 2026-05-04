@@ -112,6 +112,10 @@ window.VM_I18N = {
     'pstatus.cli_missing': '✗ install Claude Code to use Max plan',
     'pstatus.key_ok': '✓ key saved',
     'pstatus.key_missing': '✗ save key in setup',
+
+    'cta.first.title': 'First time here?',
+    'cta.first.body': 'Register at least one platform in setup before you can post. Takes 3 minutes.',
+    'cta.first.go': 'go to setup →',
   },
 
   ko: {
@@ -226,6 +230,10 @@ window.VM_I18N = {
     'pstatus.cli_missing': '✗ Max plan을 쓰려면 Claude Code 설치 필요',
     'pstatus.key_ok': '✓ 키 저장됨',
     'pstatus.key_missing': '✗ setup에서 키 저장 필요',
+
+    'cta.first.title': '처음이세요?',
+    'cta.first.body': '게시하려면 먼저 setup에서 플랫폼 한 개 이상 연결. 3분이면 끝.',
+    'cta.first.go': 'setup으로 이동 →',
   },
 
   zh: {
@@ -340,6 +348,10 @@ window.VM_I18N = {
     'pstatus.cli_missing': '✗ 要用 Max plan 请安装 Claude Code',
     'pstatus.key_ok': '✓ 已保存 key',
     'pstatus.key_missing': '✗ 在 setup 里保存 key',
+
+    'cta.first.title': '第一次来？',
+    'cta.first.body': '发帖前需要先在 setup 里连接至少一个平台。3 分钟就好。',
+    'cta.first.go': '去 setup →',
   },
 
   ja: {
@@ -454,6 +466,10 @@ window.VM_I18N = {
     'pstatus.cli_missing': '✗ Max plan を使うには Claude Code をインストール',
     'pstatus.key_ok': '✓ キー保存済み',
     'pstatus.key_missing': '✗ setup でキーを保存',
+
+    'cta.first.title': '初めてなら',
+    'cta.first.body': '投稿する前に setup でプラットフォームを 1 つ以上連携。3 分で終わる。',
+    'cta.first.go': 'setup へ →',
   },
 };
 

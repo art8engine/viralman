@@ -116,8 +116,8 @@
   "hotPaths": [
     {
       "path": "README.md",
-      "accessCount": 6,
-      "lastAccessed": 1777893429602,
+      "accessCount": 7,
+      "lastAccessed": 1777893826451,
       "type": "file"
     },
     {
@@ -364,6 +364,36 @@
       "path": "tests/test_gitmail_compose.py",
       "accessCount": 1,
       "lastAccessed": 1777893336627,
+      "type": "file"
+    },
+    {
+      "path": "assets/viralman.png",
+      "accessCount": 1,
+      "lastAccessed": 1777893771349,
+      "type": "file"
+    },
+    {
+      "path": "README.ko.md",
+      "accessCount": 1,
+      "lastAccessed": 1777893863507,
+      "type": "file"
+    },
+    {
+      "path": "README.zh.md",
+      "accessCount": 1,
+      "lastAccessed": 1777893898168,
+      "type": "file"
+    },
+    {
+      "path": "README.ja.md",
+      "accessCount": 1,
+      "lastAccessed": 1777893933893,
+      "type": "file"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "accessCount": 1,
+      "lastAccessed": 1777893996547,
       "type": "file"
     }
   ],

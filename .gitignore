@@ -1,14 +1,74 @@
+# --- secrets / runtime data ---
 .env
 .env.*
-*.pyc
-__pycache__/
-.DS_Store
-.venv/
-venv/
 .viralman/
+.viralman_unsubscribes.jsonl
 posts.jsonl
 *.local
-.viralman_unsubscribes.jsonl
+
+# --- python ---
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
 *.egg-info/
+.eggs/
 build/
 dist/
+wheels/
+.venv/
+venv/
+env/
+.python-version
+
+# --- python tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- editors / IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*~
+.~lock.*
+*.sublime-workspace
+
+# --- agent / tooling state (not source) ---
+.omc/
+.claude/
+.cursor/
+.aider*
+.continue/
+
+# --- OS junk ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- node (just in case anyone adds JS deps) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- logs / temp ---
+*.log
+*.tmp
+*.bak
+
+# --- viralman misc ---
+.viralman_dashboard_state.json

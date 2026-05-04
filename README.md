@@ -1,102 +1,106 @@
-# viralman
+<p align="center">
+  <img src="assets/viralman.png" alt="viralman" width="520">
+</p>
 
-A Claude Code plugin **and** a local dashboard for open-source maintainers. Three things in one:
+<h1 align="center">viralman</h1>
 
-1. **`/viral` — drafts** non-AI-feeling promo posts for **Reddit**, **X (Twitter)**, and **LinkedIn**, then publishes them under *your own* accounts after you confirm.
-2. **`viralman` — local dashboard** at `http://localhost:8765`. One command starts a black-themed three-page UI: twitter / reddit / gitmail. Header switches between them. OAuth login per platform.
-3. **`/gitmail` — outreach pipeline.** Describe your project; viralman finds related repos, walks their stargazers, resolves public emails, composes a personalized note via Claude / GPT / Gemini, and sends with a one-click unsubscribe footer + rate limiting.
+<p align="center">
+  <b>You ship code. We ship reach.</b><br>
+  Build it — viralman handles the hype.
+</p>
 
+<p align="center">
+  <a href="README.md"><b>English</b></a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.zh.md">中文</a> ·
+  <a href="README.ja.md">日本語</a>
+</p>
+
+---
+
+Local dashboard + multi-platform poster + targeted outreach for open-source maintainers. Paste a link, get platform-tuned drafts that don't read like AI, and let viralman send them under your own accounts — only after you say yes.
+
+```bash
+viralman                 # opens http://localhost:8765 in your browser
 ```
+
 > 이런 내용으로 바이럴해줘: 우리 팀이 만든 오픈소스 K8s autoscaler가 비용을 47% 줄였다
-```
 
-You get three drafts — one per platform — that don't read like AI slop, and a one-key confirm before anything goes live.
+You get three drafts — one per platform — that don't read like AI slop, plus a one-key confirm before anything goes live.
 
-```
-> viralman
-viralman dashboard → http://localhost:8765
-  twitter:  http://localhost:8765/twitter
-  reddit:   http://localhost:8765/reddit
-  gitmail:  http://localhost:8765/gitmail
-```
+## What viralman does
 
-## Why it exists
+| | What |
+|---|---|
+| **`/viral`** | One intent → platform-tuned drafts for **Reddit**, **X**, and **LinkedIn**. AI-tell sniffer scrubs each draft against ~30 heuristics until it stops smelling like a chatbot. |
+| **`viralman`** | Local dashboard at `http://localhost:8765`. Three pages — twitter / reddit / gitmail — switch from the header. OAuth login per platform. |
+| **`/gitmail`** | Tell us about your project. We find the GitHub repos most like yours, walk their stargazers, resolve public emails, and send each one a short, personalized note (Claude / GPT / Gemini, your choice). One-click unsubscribe baked in. |
+| Safety | Always-confirm by default. Sniffer can refuse to ship a draft. Rate limits on every send. Secrets go through `read -s`, not the LLM. |
 
-Most "AI social poster" tools produce posts that anyone can spot from across the room: balanced tricolons, em-dash floods, "It's not just X — it's Y" hooks, and a tidy moralizing closer. viralman's headline feature is a separate **ai-tell-sniffer** review pass that scores every draft against ~30 concrete heuristics and rewrites until it clears them.
+## The dashboard
 
-## What you get
+Three pages, dark theme, header switches between them.
 
-- `viralman` — start the local dashboard (Flask app at `http://localhost:8765` with three pages: twitter / reddit / gitmail).
-- `/viral <intent>` — slash command that drives the multi-platform draft+publish flow.
-- `/dashboard` — start the dashboard from inside Claude Code.
-- `/gitmail` — outreach pipeline: similar-repo search → stargazer emails → LLM-composed body → SMTP send with unsubscribe + rate limit.
-- `/viralman-login-{reddit,twitter,linkedin,gitmail}` — per-platform credential setup with secrets piped through `read -s` so they never hit the LLM context.
-- Four voice modes: **growth-story** (struggle → insight → takeaway), **casual-hype** (no-way / this-slaps register), **show-and-tell** (project launch), **contrarian-take**.
-- OAuth login (Twitter PKCE / Reddit web app / LinkedIn) plus a manual-tokens fallback in every login pane.
-- AI-tell sniffer (~30 heuristics) runs on every draft before it can be posted.
-- Per-platform register (a Reddit post is not a LinkedIn post) and length-aware trimming.
-- Always-confirm safety default. Override with `--yes`.
-- Local audit log at `~/.viralman/posts.jsonl`. Local unsubscribe log at `<repo>/.viralman_unsubscribes.jsonl`.
-- MIT license — fork, vendor, ship.
+- **Twitter** — paste a draft, watch char count + sniffer flags update live, post via the API or fall back to the compose URL.
+- **Reddit** — subreddit + title + flair + body. Built-in checks for Reddit-specific tells (no hashtags, anchored claims).
+- **gitmail** — drag the slider (1 to 10,000 target users), pick an LLM provider, hit start. Live progress: analyse → search repos → collect emails → compose → send. Per-recipient preview pane.
+
+## How "doesn't feel AI" actually works
+
+The `ai-tell-sniffer` agent runs on every draft, looking for:
+
+- Banned phrases — "delve", "tapestry", "leverage", "navigate the landscape", "it's not just X — it's Y", "let's dive in", "supercharge", and ~20 more.
+- Em-dash density above 1 per 60 words.
+- Balanced tricolons. Closing moralizers. Hashtag stuffing.
+- Generic-claim posts with no anchor — every draft must contain a number, a name, a time anchor, or an admission of doubt.
+
+Three rewrite passes. If it still trips flags, the cleanest version is shown to you with the warnings surfaced — and viralman refuses to auto-post it.
 
 ## Install
 
 ### As a Claude Code plugin
 
 ```bash
-# from anywhere
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
-
-Or symlink the repo into `~/.claude/plugins/` for local dev.
 
 ### As a CLI (so the literal `viralman` word works in your shell)
 
 ```bash
 git clone https://github.com/art8engine/viralman
 cd viralman
-pip install --user -e .              # adds `viralman` to PATH
-
-viralman                             # → http://localhost:8765, opens browser
-viralman --port 9000 --no-browser
-```
-
-Without `pip install`, run from the repo root:
-
-```bash
-./bin/viralman                       # same flags
-./scripts/dashboard.py               # equivalent
-```
-
-The dashboard needs Flask. If `pip install` isn't possible (PEP 668 / Homebrew Python), use a venv:
-
-```bash
 python3 -m venv .venv
 .venv/bin/pip install flask
-.venv/bin/python ./bin/viralman
+.venv/bin/pip install -e .
+
+# create a one-line shim so viralman is on your PATH from anywhere
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/viralman <<'SH'
+#!/usr/bin/env bash
+exec "$HOME/path/to/viralman/.venv/bin/python" "$HOME/path/to/viralman/bin/viralman" "$@"
+SH
+chmod +x ~/.local/bin/viralman
 ```
+
+> **Heads up — Python 3.14**: setuptools' editable install relies on executable `.pth` files, which 3.14 disables. The shim above bypasses that and is the recommended path on 3.14+.
 
 ### Credentials (one-time, per platform)
 
-Four dedicated skills walk you through each setup separately. Run only the ones you need:
+Four dedicated skills walk you through each setup. Run only the ones you need:
 
 ```
-/viralman-login-reddit       # ~3 min, free (or use the dashboard's OAuth button)
-/viralman-login-twitter      # ~5 min, free tier (~1,500 posts/month). Optional — compose URL fallback works without it.
-/viralman-login-linkedin     # ~10 min, free, OAuth dance + 60-day token refresh
-/viralman-login-gitmail      # ~5 min, GitHub token + SMTP + one LLM provider key
+/viralman-login-reddit       # ~3 min, free
+/viralman-login-twitter      # ~5 min, free tier (~1,500 posts/month)
+/viralman-login-linkedin     # ~10 min, OAuth dance + 60-day token refresh
+/viralman-login-gitmail      # ~5 min, GitHub token + SMTP + one LLM API key
 ```
 
-Each skill walks you through the platform's developer portal step by step. **Secrets never enter the LLM context** — the skills have you pipe passwords/tokens through `read -s` directly into a save script. The agent only sees non-secret values like usernames and client_ids.
-
-Credentials are written to `~/.viralman/.env` with `chmod 600`. The `post_*.py` and `gitmail.py` scripts are the only place that file is read.
-
-There's also a non-interactive shell wizard if you prefer doing it all at once: `./scripts/setup.sh`.
+**Secrets never enter the LLM context** — the skills have you pipe passwords and tokens through `read -s` directly into a save script. Credentials end up in `~/.viralman/.env` with `chmod 600`.
 
 ## Usage
 
-### Drafting + posting (`/viral`)
+### Drafting + posting
 
 ```bash
 # default: drafts for all three platforms, growth-story mode, ask before posting
@@ -108,33 +112,20 @@ There's also a non-interactive shell wizard if you prefer doing it all at once: 
 # pick targets
 /viral --only reddit,x "looking for r/programming feedback on this go regex lib"
 
-# auto-publish (be sure)
-/viral --yes "..."
-
-# Korean-language output
+# Korean output
 /viral --lang ko "..."
 ```
 
 ### Dashboard
 
 ```bash
-viralman                              # opens http://localhost:8765 in your browser
+viralman                              # → http://localhost:8765
+viralman --port 9000 --no-browser
 ```
 
-The dashboard has three pages:
-
-| Page | What it does |
-|---|---|
-| `/twitter` | textarea + live preview (char count, sniffer flags, thread split). One-click post via API or compose-URL fallback. |
-| `/reddit`  | subreddit + title + flair + body, live preview with Reddit-specific sniffer rules (no hashtags, etc.), one-click submit via PRAW. |
-| `/gitmail` | start the outreach pipeline. Slider: 1–10000 target users. Live progress (analyse → search → recipients → compose → send). Per-recipient preview pane. |
-
-OAuth login is a button on each platform's pane. The redirect URI to register is shown in the pane (`http://localhost:8765/oauth/<platform>/callback`).
-
-### Outreach (`/gitmail`)
+### gitmail outreach
 
 ```bash
-# one-shot CLI — dry-run by default, builds previews without sending
 ./scripts/gitmail.py run \
   --description "A K8s autoscaler in Go that cuts cost by 47%" \
   --project-name k8s-autoscaler \
@@ -142,75 +133,33 @@ OAuth login is a button on each platform's pane. The redirect URI to register is
   --max-users 100 \
   --provider claude \
   --dry-run
-
-# template-only mode: one LLM call, reuse for all (~50x cheaper)
-./scripts/gitmail.py run --template-only ...
-
-# from inside Claude Code
-/gitmail "A K8s autoscaler in Go that cuts cost by 47%" --max-users 100 --dry-run
 ```
 
-Every email gets a one-click unsubscribe link and a `List-Unsubscribe` header. SMTP is rate-limited to 30/min by default (override with `SMTP_RATE_PER_MIN`).
-
-## How "doesn't feel AI" actually works
-
-The `ai-tell-sniffer` agent runs on every draft, looking for:
-
-- **Banned phrases**: "delve", "tapestry", "leverage", "navigate the landscape", "it's not just X — it's Y", "in today's fast-paced world", "stands as a testament", "let's dive in", "unleash", "supercharge", and ~20 more.
-- **Em-dash density** > 1 per 60 words.
-- **Balanced tricolons** (three list items of nearly identical length).
-- **Closing moralizers** — humans don't summarize their own anecdotes.
-- **Hashtag stuffing** — caps per platform; Reddit gets zero.
-- **Generic-claim anchors** — every draft must contain a specific number, name, time anchor, or admission of doubt.
-
-If three rewrite passes still trip flags, the unflagged version is shown to you with the warnings surfaced.
+Every email gets a one-click unsubscribe link plus a `List-Unsubscribe` header. SMTP is rate-limited to 30/min by default (override with `SMTP_RATE_PER_MIN`).
 
 ## Repo layout
 
 ```
 viralman/
-├── .claude-plugin/                 # plugin & marketplace manifests
 ├── bin/viralman                    # `viralman` CLI entry → starts dashboard
 ├── pyproject.toml                  # `pip install -e .` registers the command
-├── viralman_cli/                   # console-script package mirror of bin/viralman
-├── dashboard/                      # Flask app
-│   ├── server.py                   # create_app + dev runner
-│   ├── api.py                      # JSON endpoints + gitmail job tracker
-│   ├── oauth.py                    # OAuth flows (twitter/reddit/linkedin)
-│   ├── templates/                  # base + per-page jinja templates
-│   └── static/{css,js}/            # dark theme + per-page JS
+├── viralman_cli/                   # console-script package
+├── dashboard/                      # Flask app (server, api, oauth, templates, static)
 ├── commands/                       # /viral, /dashboard, /gitmail
-├── skills/
-│   ├── viral/                      # main /viral flow
-│   ├── dashboard/                  # /dashboard skill
-│   ├── gitmail/                    # /gitmail skill
-│   ├── viralman-login-reddit/
-│   ├── viralman-login-twitter/
-│   ├── viralman-login-linkedin/
-│   └── viralman-login-gitmail/     # GitHub + SMTP + LLM-provider setup
+├── skills/                         # viral, dashboard, gitmail, viralman-login-*
 ├── agents/                         # viral-writer, ai-tell-sniffer, publisher
 ├── voice/                          # ai-tells, platform-norms, mode templates, reference corpus
-├── scripts/
-│   ├── post_{reddit,twitter,linkedin}.py
-│   ├── gitmail.py                  # streams JSONL events for the dashboard
-│   ├── dashboard.py                # alternate entry to bin/viralman
-│   ├── lib/
-│   │   ├── creds.py                # one-and-only ~/.viralman/.env reader
-│   │   ├── compose_urls.py
-│   │   ├── sniffer_check.py
-│   │   ├── github_search.py        # search repos + iter stargazers + resolve email
-│   │   ├── llm_compose.py          # Claude / OpenAI / Gemini abstraction
-│   │   └── smtp_send.py            # SMTP + unsubscribe + rate limit
-│   ├── setup.sh
-│   └── save_creds.py
+├── scripts/                        # post_*.py, gitmail.py, dashboard.py, save_creds.py
+│   └── lib/                        # creds, sniffer_check, github_search, llm_compose, smtp_send
 ├── tests/                          # sniffer + gitmail compose tests
-└── examples/                       # end-to-end transcripts
+├── examples/                       # end-to-end transcripts
+└── assets/                         # README art
 ```
 
 ## Status
 
-v0.2.0 — adds local dashboard + gitmail outreach + OAuth logins. v0.1.0's `/viral` flow is unchanged. Issues and PRs welcome.
+v0.2.0 — local dashboard + gitmail outreach + OAuth logins added. The original `/viral` flow from v0.1.0 is unchanged.
 
 ## License
 
-MIT.
+MIT — fork, vendor, ship.

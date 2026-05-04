@@ -1,8 +1,7 @@
 """Flask app for the viralman dashboard.
 
-Single-page wizard: Project → Generate → Targets → Send. Header has unified
-login. Old per-platform paths (/twitter, /reddit, /gitmail) keep working —
-they all serve the same wizard so existing bookmarks don't 404.
+Three pages — twitter / reddit / gitmail — sharing a project block via
+localStorage. Header switches between them. Connect dropdown unifies login.
 """
 
 from __future__ import annotations
@@ -16,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "lib"))
 
 try:
-    from flask import Flask, redirect, render_template, url_for
+    from flask import Flask, redirect, render_template
 except ImportError as e:  # pragma: no cover
     raise SystemExit(
         "ERROR: dashboard requires Flask. Run: pip install flask\n"
@@ -37,11 +36,20 @@ def create_app(*, secret_key: str | None = None) -> Flask:
     app.config["REPO_ROOT"] = str(REPO_ROOT)
 
     @app.route("/")
-    @app.route("/twitter")
-    @app.route("/reddit")
-    @app.route("/gitmail")
     def index():
-        return render_template("index.html")
+        return redirect("/twitter")
+
+    @app.route("/twitter")
+    def page_twitter():
+        return render_template("twitter.html", active="twitter")
+
+    @app.route("/reddit")
+    def page_reddit():
+        return render_template("reddit.html", active="reddit")
+
+    @app.route("/gitmail")
+    def page_gitmail():
+        return render_template("gitmail.html", active="gitmail")
 
     @app.route("/u/<token>", methods=["GET", "POST"])
     def unsubscribe(token):

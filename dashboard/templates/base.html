@@ -3,12 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>viralman</title>
+  <title>viralman — {{ active }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
-<body>
+<body data-page="{{ active }}">
   <header class="hd">
     <a class="hd-logo" href="/">viralman</a>
+    <nav class="hd-tabs">
+      <a class="hd-tab {{ 'active' if active == 'twitter' else '' }}" href="/twitter">Twitter</a>
+      <a class="hd-tab {{ 'active' if active == 'reddit' else '' }}" href="/reddit">Reddit</a>
+      <a class="hd-tab {{ 'active' if active == 'gitmail' else '' }}" href="/gitmail">Gitmail</a>
+    </nav>
     <div class="hd-spacer"></div>
     <select class="hd-lang" id="lang-pick" aria-label="language">
       <option value="en">EN</option>
@@ -51,9 +56,7 @@
     </div>
   </header>
 
-  <main class="main">
-    {% block main %}{% endblock %}
-  </main>
+  <main class="main">{% block main %}{% endblock %}</main>
 
   <div class="modal" id="modal" hidden>
     <div class="modal-box">
@@ -68,6 +71,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

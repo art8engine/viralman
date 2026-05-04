@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="page">
+  {% include "_project.html" %}
+
+  <section class="card">
+    <h2 data-i18n="reddit.draft">post</h2>
+    <label><span data-i18n="reddit.title">title</span><input id="rd-title" maxlength="300"></label>
+    <label><span data-i18n="reddit.body">body (markdown)</span><textarea id="rd-body" rows="10"></textarea></label>
+    <div class="row vm-between">
+      <div class="meta" id="rd-meta">title 0/300 · body 0 chars</div>
+      <ul class="flags" id="rd-flags"></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="reddit.targets">subreddits</h2>
+    <div class="chips" id="rd-subs"></div>
+    <div class="chip-add">
+      <input id="rd-sub-input" data-i18n-placeholder="tg.add_subreddit" placeholder="add subreddit (without r/)">
+      <button class="btn small" id="rd-sub-add">+</button>
+    </div>
+    <div class="sub-actions row vm-between">
+      <span class="meta" data-i18n="reddit.post_to">posting to first subreddit; switch by drag</span>
+      <button class="btn small" id="rd-scan" data-i18n="tg.scan">scan threads</button>
+    </div>
+    <ul class="threads" id="rd-threads"><li class="empty" data-i18n="tg.click_scan">click "scan" to fetch</li></ul>
+  </section>
+
+  <section class="card actions">
+    <a id="rd-preview" class="btn ghost" target="_blank" rel="noopener" href="#" data-i18n="reddit.preview">preview submit URL</a>
+    <button class="btn primary" id="rd-post" data-i18n="reddit.post">post</button>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/reddit.js') }}"></script>{% endblock %}

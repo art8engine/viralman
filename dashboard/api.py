@@ -228,7 +228,7 @@ def _start_gitmail_job(job: GitmailJob) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _llm_draft_or_fallback(creds, lc, channel, project, keywords, mode, provider,
+def _llm_draft_or_fallback(creds, lc, channel, project, keywords, intent, provider,
                             hashtags=None):
     """Generate a draft via LLM; if creds missing, return a templated stub."""
     name = project.get("name") or "my-project"
@@ -243,15 +243,18 @@ def _llm_draft_or_fallback(creds, lc, channel, project, keywords, mode, provider
     if use_llm:
         try:
             system = (
-                f"Write a {channel} post for an open-source maintainer in {mode} mode. "
+                f"Write a {channel} post for a developer announcing their own project. "
                 "No marketing slop. No 'let's dive in', 'leverage', 'supercharge', 'unlock'. "
                 "Concrete, anchored in numbers/names where possible. End with a low-key CTA."
             )
             user_prompt = (
                 f"Project: {name}\n"
                 f"Pitch: {pitch}\n"
-                f"Keywords: {', '.join(keywords[:8])}\n\n"
+                f"Keywords: {', '.join(keywords[:8])}\n"
             )
+            if intent:
+                user_prompt += f"What the user wants to convey: {intent}\n"
+            user_prompt += "\n"
             if channel == "twitter":
                 user_prompt += (
                     f"Output ONLY the tweet body (<=280 chars). For a thread, separate parts "
@@ -612,20 +615,20 @@ def register(app) -> None:
         suggested_subreddits = _suggest_subreddits(topics, keywords)
 
         provider = data.get("provider")
-        mode = data.get("mode") or "growth-story"
+        intent = (data.get("intent") or "").strip()
         drafts: dict[str, dict] = {}
 
         if "twitter" in channels:
             drafts["twitter"] = _llm_draft_or_fallback(
-                creds, lc, "twitter", project, keywords, mode, provider, hashtags=suggested_hashtags[:2],
+                creds, lc, "twitter", project, keywords, intent, provider, hashtags=suggested_hashtags[:2],
             )
         if "reddit" in channels:
             drafts["reddit"] = _llm_draft_or_fallback(
-                creds, lc, "reddit", project, keywords, mode, provider,
+                creds, lc, "reddit", project, keywords, intent, provider,
             )
         if "gitmail" in channels:
             drafts["gitmail"] = _llm_draft_or_fallback(
-                creds, lc, "gitmail", project, keywords, mode, provider,
+                creds, lc, "gitmail", project, keywords, intent, provider,
             )
 
         return jsonify({

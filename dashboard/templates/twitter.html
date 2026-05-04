@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="page">
+  {% include "_project.html" %}
+
+  <section class="card">
+    <h2 data-i18n="twitter.draft">tweet</h2>
+    <textarea id="tw-body" rows="10" data-i18n-placeholder="twitter.body.ph" placeholder="generate a draft, or write your own. split a thread with --- on its own line."></textarea>
+    <div class="row vm-between">
+      <div class="meta" id="tw-meta">0 / 280</div>
+      <ul class="flags" id="tw-flags"></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="twitter.targets">hashtags</h2>
+    <div class="chips" id="tw-tags"></div>
+    <div class="chip-add">
+      <input id="tw-tag-input" data-i18n-placeholder="tg.add_hashtag" placeholder="add hashtag">
+      <button class="btn small" id="tw-tag-add">+</button>
+    </div>
+  </section>
+
+  <section class="card actions">
+    <a id="tw-preview" class="btn ghost" target="_blank" rel="noopener" href="#" data-i18n="twitter.preview">preview compose URL</a>
+    <button class="btn primary" id="tw-post" data-i18n="twitter.post">post</button>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/twitter.js') }}"></script>{% endblock %}

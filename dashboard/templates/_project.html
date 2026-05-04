@@ -1,0 +1,28 @@
+{# Shared project block — included on every page. JS hydrates from localStorage. #}
+<section class="card project">
+  <h2 data-i18n="block.project">project</h2>
+  <div class="grid two">
+    <label><span data-i18n="project.name">name</span><input id="p-name" placeholder="viralman"></label>
+    <label><span data-i18n="project.url">github URL</span><input id="p-url" placeholder="https://github.com/you/repo"></label>
+  </div>
+  <label><span data-i18n="project.pitch">one-line pitch</span><input id="p-pitch" data-i18n-placeholder="project.pitch.ph" placeholder="cuts cost by 47% in 3 weeks"></label>
+  <label><span data-i18n="project.desc">description</span><textarea id="p-desc" rows="3" data-i18n-placeholder="project.desc.ph" placeholder="3–5 lines on what your project is and who it's for"></textarea></label>
+</section>
+
+<section class="card intent">
+  <h2 data-i18n="block.intent">what to write</h2>
+  <label class="no-label">
+    <textarea id="p-intent" rows="3" data-i18n-placeholder="intent.ph" placeholder="tell viralman what angle, mood, what to emphasize. e.g. 'launch announcement, casually excited, lead with the 47% cost cut'"></textarea>
+  </label>
+  <div class="row vm-between">
+    <label class="inline"><span data-i18n="provider">provider</span>
+      <select id="p-provider">
+        <option value="" data-i18n="auto">auto</option>
+        <option value="claude">claude</option>
+        <option value="openai">openai</option>
+        <option value="gemini">gemini</option>
+      </select>
+    </label>
+    <button class="btn primary" id="generate" data-i18n="generate">generate</button>
+  </div>
+</section>

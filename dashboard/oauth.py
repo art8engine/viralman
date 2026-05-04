@@ -142,19 +142,12 @@ def register(app) -> None:
             return jsonify({"ok": False, "error": "unknown platform"}), 404
         try:
             creds = load_creds()
-        except CredsError as e:
-            return jsonify({"ok": False, "error": str(e)}), 400
+        except CredsError:
+            creds = {}
 
         client_id = creds.get(conf["client_id"])
         if not client_id:
-            return (jsonify({
-                "ok": False,
-                "error": f"missing {conf['client_id']} in ~/.viralman/.env",
-                "hint": (f"Register a developer app for {platform}, set "
-                          f"redirect URI to "
-                          f"{_build_redirect(platform, request.url_root)}, "
-                          f"then save its client id and secret."),
-            }), 400)
+            return redirect(f"/setup?platform={platform}&missing=client_id")
 
         state = _secrets.token_urlsafe(32)
         session[f"oauth_state_{platform}"] = state

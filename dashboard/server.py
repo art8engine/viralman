@@ -51,6 +51,10 @@ def create_app(*, secret_key: str | None = None) -> Flask:
     def page_gitmail():
         return render_template("gitmail.html", active="gitmail")
 
+    @app.route("/setup")
+    def page_setup():
+        return render_template("setup.html", active="setup")
+
     @app.route("/u/<token>", methods=["GET", "POST"])
     def unsubscribe(token):
         api.record_unsubscribe(token)

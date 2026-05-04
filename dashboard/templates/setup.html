@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="setup">
+  <h1 data-i18n="setup.title">setup guide</h1>
+  <p class="hint" data-i18n="setup.intro">save credentials once. they live in ~/.viralman/.env (chmod 600). secrets piped via /api/creds/manual; never logged to chat.</p>
+
+  <nav class="setup-tabs">
+    <button class="setup-tab active" data-tab="twitter">Twitter / X</button>
+    <button class="setup-tab" data-tab="reddit">Reddit</button>
+    <button class="setup-tab" data-tab="linkedin">LinkedIn</button>
+    <button class="setup-tab" data-tab="gitmail">Gitmail (SMTP + GitHub + LLM)</button>
+    <button class="setup-tab" data-tab="claudemax">Claude Max</button>
+  </nav>
+
+  <!-- Twitter -->
+  <section class="setup-pane" data-pane="twitter">
+    <h2>Twitter / X</h2>
+    <div class="hint">
+      <span data-i18n="setup.redirect_uri">redirect URI to register</span>:
+      <code id="setup-redir-twitter">http://localhost:8765/oauth/twitter/callback</code>
+    </div>
+    <ol class="steps">
+      <li>open <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a> (logged into the account you want viralman to post from).</li>
+      <li>create a new project + app. App name must be globally unique on X (try <code>viralman-&lt;your-handle&gt;</code>).</li>
+      <li>"User authentication settings" → set up. <strong>App permissions: Read and write</strong> ← important. Type: Web App. Callback URI: <code>http://localhost:8765/oauth/twitter/callback</code>. Website: any valid URL.</li>
+      <li>"Keys and tokens" tab. Save the four secrets below. <strong>Regenerate the Access Token AFTER setting Read+Write</strong> — otherwise tokens are read-only.</li>
+    </ol>
+    <h3>OAuth 2.0 (recommended for the dashboard "login" button)</h3>
+    <p class="hint">Save these two from the "OAuth 2.0 Client ID and Client Secret" section:</p>
+    <div class="creds-form" data-platform="twitter-oauth2">
+      <label>OAuth2 Client ID<input type="text" data-key="TWITTER_OAUTH2_CLIENT_ID"></label>
+      <label>OAuth2 Client Secret<input type="password" data-key="TWITTER_OAUTH2_CLIENT_SECRET" data-secret></label>
+      <button class="btn primary save">save</button>
+    </div>
+    <h3>OAuth 1.0a (legacy, used by post_twitter.py)</h3>
+    <p class="hint">Optional. Only needed if you prefer the legacy posting path or want threads via tweepy.</p>
+    <div class="creds-form" data-platform="twitter-legacy">
+      <label>API Key (Consumer Key)<input type="text" data-key="TWITTER_API_KEY"></label>
+      <label>API Secret<input type="password" data-key="TWITTER_API_SECRET" data-secret></label>
+      <label>Access Token<input type="text" data-key="TWITTER_ACCESS_TOKEN"></label>
+      <label>Access Secret<input type="password" data-key="TWITTER_ACCESS_SECRET" data-secret></label>
+      <label>Handle (without @)<input type="text" data-key="TWITTER_HANDLE"></label>
+      <button class="btn primary save">save</button>
+    </div>
+  </section>
+
+  <!-- Reddit -->
+  <section class="setup-pane hidden" data-pane="reddit">
+    <h2>Reddit</h2>
+    <div class="hint">
+      <span data-i18n="setup.redirect_uri">redirect URI to register</span>:
+      <code id="setup-redir-reddit">http://localhost:8765/oauth/reddit/callback</code>
+    </div>
+    <ol class="steps">
+      <li>open <a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a>.</li>
+      <li>"create another app" at the bottom.</li>
+      <li>name: <code>viralman</code>. type: <strong>web app</strong> (for OAuth) <em>or</em> <strong>script</strong> (for legacy username+password). redirect uri: <code>http://localhost:8765/oauth/reddit/callback</code>.</li>
+      <li>copy the short string under the app name (= client id) and the "secret" field.</li>
+      <li>2FA on Reddit blocks PRAW password auth (script-app path). Use OAuth or a dedicated posting account.</li>
+    </ol>
+    <h3>OAuth web-app (recommended)</h3>
+    <div class="creds-form" data-platform="reddit-oauth">
+      <label>OAuth Client ID<input type="text" data-key="REDDIT_OAUTH_CLIENT_ID"></label>
+      <label>OAuth Client Secret<input type="password" data-key="REDDIT_OAUTH_CLIENT_SECRET" data-secret></label>
+      <label>User-Agent (optional)<input type="text" data-key="REDDIT_USER_AGENT" placeholder="viralman/0.2 by yourname"></label>
+      <button class="btn primary save">save</button>
+    </div>
+    <h3>Script-app (legacy username + password)</h3>
+    <div class="creds-form" data-platform="reddit-legacy">
+      <label>client_id<input type="text" data-key="REDDIT_CLIENT_ID"></label>
+      <label>client_secret<input type="password" data-key="REDDIT_CLIENT_SECRET" data-secret></label>
+      <label>username<input type="text" data-key="REDDIT_USERNAME"></label>
+      <label>password<input type="password" data-key="REDDIT_PASSWORD" data-secret></label>
+      <button class="btn primary save">save</button>
+    </div>
+  </section>
+
+  <!-- LinkedIn -->
+  <section class="setup-pane hidden" data-pane="linkedin">
+    <h2>LinkedIn</h2>
+    <div class="hint">
+      <span data-i18n="setup.redirect_uri">redirect URI to register</span>:
+      <code id="setup-redir-linkedin">http://localhost:8765/oauth/linkedin/callback</code>
+    </div>
+    <ol class="steps">
+      <li>open <a href="https://www.linkedin.com/developers/apps" target="_blank">linkedin.com/developers/apps</a>.</li>
+      <li>create a new app. you'll need a Page to associate it with — any of yours works.</li>
+      <li>"Auth" tab. Add redirect URL: <code>http://localhost:8765/oauth/linkedin/callback</code>.</li>
+      <li>"Products" tab. Request access to <strong>Sign In with LinkedIn using OpenID Connect</strong> and <strong>Share on LinkedIn</strong>. Approval is automatic for personal use.</li>
+      <li>"Auth" tab → copy Client ID and Client Secret.</li>
+      <li>Tokens expire after 60 days; the dashboard will tell you when to re-login.</li>
+    </ol>
+    <div class="creds-form" data-platform="linkedin">
+      <label>Client ID<input type="text" data-key="LINKEDIN_CLIENT_ID"></label>
+      <label>Client Secret<input type="password" data-key="LINKEDIN_CLIENT_SECRET" data-secret></label>
+      <button class="btn primary save">save</button>
+    </div>
+  </section>
+
+  <!-- Gitmail (SMTP + GitHub + LLM) -->
+  <section class="setup-pane hidden" data-pane="gitmail">
+    <h2>Gitmail — SMTP + GitHub + LLM provider</h2>
+    <p class="hint">Three credential bundles. Save whichever ones apply.</p>
+
+    <h3>1. GitHub token (raises the API rate limit from 60 → 5000/hour)</h3>
+    <ol class="steps">
+      <li>open <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a>.</li>
+      <li>"Generate new token" → fine-grained.</li>
+      <li>name: <code>viralman-gitmail</code>. expiration: anything (90 days is fine).</li>
+      <li>repository access: <strong>Public Repositories (read-only)</strong>. permissions: defaults are enough.</li>
+      <li>copy and save.</li>
+    </ol>
+    <div class="creds-form" data-platform="github">
+      <label>GitHub token<input type="password" data-key="GITHUB_TOKEN" data-secret></label>
+      <button class="btn primary save">save</button>
+    </div>
+
+    <h3>2. SMTP — Gmail example</h3>
+    <ol class="steps">
+      <li>open <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> (2FA must be on).</li>
+      <li>create a new app password named <code>viralman</code>. copy the 16-char password.</li>
+      <li>fields below: host <code>smtp.gmail.com</code>, port <code>587</code>, security <code>starttls</code>. user = your Gmail address. password = the 16-char one.</li>
+      <li>Gmail caps at ~500 emails/day per account. For larger sends use SendGrid / Mailgun / Amazon SES.</li>
+    </ol>
+    <div class="creds-form" data-platform="smtp">
+      <label>SMTP host<input type="text" data-key="SMTP_HOST" placeholder="smtp.gmail.com"></label>
+      <label>SMTP port<input type="text" data-key="SMTP_PORT" placeholder="587"></label>
+      <label>SMTP security<input type="text" data-key="SMTP_SECURITY" placeholder="starttls"></label>
+      <label>SMTP user<input type="text" data-key="SMTP_USER"></label>
+      <label>SMTP password / app-pw<input type="password" data-key="SMTP_PASSWORD" data-secret></label>
+      <label>From address<input type="text" data-key="SMTP_FROM"></label>
+      <label>From display name (optional)<input type="text" data-key="SMTP_FROM_NAME"></label>
+      <label>Rate per minute (default 30)<input type="text" data-key="SMTP_RATE_PER_MIN" placeholder="30"></label>
+      <button class="btn primary save">save</button>
+    </div>
+
+    <h3>3. LLM API key (pick ONE)</h3>
+    <p class="hint">Or skip this entirely and use Claude Max via the Claude Code CLI — see the next tab.</p>
+    <div class="creds-form" data-platform="llm">
+      <label>Anthropic (claude.ai console)<input type="password" data-key="ANTHROPIC_API_KEY" data-secret placeholder="sk-ant-…"></label>
+      <label>OpenAI<input type="password" data-key="OPENAI_API_KEY" data-secret placeholder="sk-…"></label>
+      <label>Gemini (aistudio.google.com)<input type="password" data-key="GEMINI_API_KEY" data-secret></label>
+      <button class="btn primary save">save</button>
+    </div>
+  </section>
+
+  <!-- Claude Max via Claude Code CLI -->
+  <section class="setup-pane hidden" data-pane="claudemax">
+    <h2>Claude Max via Claude Code CLI</h2>
+    <p class="hint">If you already use Claude Code, viralman can route LLM calls through your installed <code>claude</code> binary instead of needing an API key. Your Max plan quota applies.</p>
+    <div id="claudemax-status" class="claudemax-status">checking…</div>
+    <ol class="steps">
+      <li>install Claude Code if you don't have it: <a href="https://docs.claude.com/en/docs/claude-code/quickstart" target="_blank">docs.claude.com/claude-code</a>.</li>
+      <li>run <code>claude</code> once to log in to your Anthropic account (uses your Max plan).</li>
+      <li>back in this dashboard, on any page, pick <strong>provider: claude-cli</strong> in the project block. Generate.</li>
+      <li>no API key required. The dashboard checks for the binary on every page load.</li>
+    </ol>
+    <p class="hint">Want a key-based fallback instead? Save an <code>ANTHROPIC_API_KEY</code> on the Gitmail tab.</p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/setup.js') }}"></script>{% endblock %}

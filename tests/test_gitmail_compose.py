@@ -103,8 +103,20 @@ class TestProviderRouting(unittest.TestCase):
         self.assertEqual(llm_compose._resolve_provider(creds), "claude")
 
     def test_no_provider_raises(self) -> None:
-        with self.assertRaises(RuntimeError):
-            llm_compose._resolve_provider({})
+        # Should raise only when neither API key nor `claude` CLI is available.
+        from unittest.mock import patch
+        with patch("shutil.which", return_value=None):
+            with self.assertRaises(RuntimeError):
+                llm_compose._resolve_provider({})
+
+    def test_falls_back_to_claude_cli_when_present(self) -> None:
+        from unittest.mock import patch
+        with patch("shutil.which", return_value="/usr/local/bin/claude"):
+            self.assertEqual(llm_compose._resolve_provider({}), "claude-cli")
+
+    def test_explicit_claude_cli(self) -> None:
+        self.assertEqual(llm_compose._resolve_provider({}, "claude-cli"), "claude-cli")
+        self.assertEqual(llm_compose._resolve_provider({}, "claude-max"), "claude-cli")
 
 
 class TestSmtpRender(unittest.TestCase):

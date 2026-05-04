@@ -429,6 +429,22 @@ def _creds_status() -> Dict[str, Dict[str, Any]]:
         out["reddit"]["username"] = creds["REDDIT_USERNAME"]
     if creds.get("SMTP_FROM"):
         out["smtp"]["from"] = creds["SMTP_FROM"]
+
+    # Claude CLI (Claude Max plan) — no key, just check the binary
+    import shutil as _sh
+    binary = _sh.which("claude")
+    cli_info: Dict[str, Any] = {"available": bool(binary)}
+    if binary:
+        cli_info["path"] = binary
+        try:
+            import subprocess as _sp
+            ver = _sp.run([binary, "--version"], capture_output=True, text=True, timeout=5)
+            if ver.returncode == 0:
+                cli_info["version"] = ver.stdout.strip().split()[0]
+        except Exception:
+            pass
+    cli_info["configured"] = cli_info["available"]
+    out["claude_cli"] = cli_info
     return out
 
 

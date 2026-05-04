@@ -39,6 +39,10 @@ PROVIDER_KEYS = {
     "gpt": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "google": "GEMINI_API_KEY",
+    # claude-cli is special: no API key, uses local `claude` binary
+    "claude-cli": None,
+    "claude_cli": None,
+    "claude-max": None,
 }
 
 DEFAULT_MODELS = {
@@ -50,7 +54,9 @@ DEFAULT_MODELS = {
 
 def _resolve_provider(creds: Dict[str, str], requested: Optional[str] = None) -> str:
     if requested:
-        canon = requested.lower()
+        canon = requested.lower().replace("_", "-")
+        if canon in ("claude-cli", "claude-max"):
+            return "claude-cli"
         if canon in ("claude", "anthropic"):
             return "claude"
         if canon in ("openai", "gpt"):
@@ -62,9 +68,14 @@ def _resolve_provider(creds: Dict[str, str], requested: Optional[str] = None) ->
                        ("gemini", "GEMINI_API_KEY")]:
         if creds.get(key):
             return prov
+    # Last resort: if `claude` CLI is on PATH, use it.
+    import shutil as _sh
+    if _sh.which("claude"):
+        return "claude-cli"
     raise RuntimeError(
         "No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, "
-        "or GEMINI_API_KEY via scripts/save_creds.py."
+        "or GEMINI_API_KEY via scripts/save_creds.py — or install Claude Code "
+        "(claude CLI) and select provider 'claude-cli'."
     )
 
 
@@ -175,6 +186,32 @@ def _call_gemini(api_key: str, model: str, system: str, user: str,
     return "".join(p.get("text", "") for p in parts).strip()
 
 
+def _call_claude_cli(system: str, user: str, max_tokens: int = 1500) -> str:
+    """Delegate to the local `claude` CLI (Claude Code). Uses the user's logged-in
+    Anthropic account (Max plan quota included). No API key needed.
+    """
+    import shutil as _sh
+    import subprocess as _sp
+    binary = _sh.which("claude")
+    if not binary:
+        raise RuntimeError(
+            "claude CLI not on PATH. Install Claude Code or pick a different provider."
+        )
+    # Combine system and user prompts. Claude CLI's -p (print) flag is non-interactive.
+    full = f"<system>\n{system}\n</system>\n\n{user}"
+    try:
+        proc = _sp.run(
+            [binary, "-p", full, "--output-format", "text"],
+            capture_output=True, text=True, timeout=180,
+        )
+    except _sp.TimeoutExpired:
+        raise RuntimeError("claude CLI timed out after 180s")
+    if proc.returncode != 0:
+        err = (proc.stderr or "").strip()[:400] or "(no stderr)"
+        raise RuntimeError(f"claude CLI exit={proc.returncode}: {err}")
+    return (proc.stdout or "").strip()
+
+
 def call_llm(
     creds: Dict[str, str],
     *,
@@ -185,7 +222,11 @@ def call_llm(
     max_tokens: int = 1500,
 ) -> str:
     prov = _resolve_provider(creds, provider)
-    key = creds.get(PROVIDER_KEYS[prov]) or os.environ.get(PROVIDER_KEYS[prov])
+    if prov == "claude-cli":
+        return _call_claude_cli(system, user, max_tokens)
+    key_name = PROVIDER_KEYS.get(prov)
+    key = creds.get(key_name) if key_name else None
+    key = key or (os.environ.get(key_name) if key_name else None)
     if not key:
         raise RuntimeError(f"missing API key for provider={prov}")
     use_model = model or creds.get("VIRALMAN_LLM_MODEL") or DEFAULT_MODELS[prov]

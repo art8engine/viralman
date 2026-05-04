@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>viralman — {{ active }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body data-page="{{ active }}">
+  <header class="vm-header">
+    <a class="vm-logo" href="/">viralman</a>
+    <nav class="vm-tabs">
+      <a class="vm-tab {{ 'active' if active == 'twitter' else '' }}" href="/twitter">
+        <span class="dot"></span>twitter
+      </a>
+      <a class="vm-tab {{ 'active' if active == 'reddit' else '' }}" href="/reddit">
+        <span class="dot"></span>reddit
+      </a>
+      <a class="vm-tab {{ 'active' if active == 'gitmail' else '' }}" href="/gitmail">
+        <span class="dot"></span>gitmail
+      </a>
+    </nav>
+    <div class="vm-status" id="vm-status" data-platform="{{ active }}">
+      <span class="vm-status-dot pending"></span>
+      <span class="vm-status-text">checking…</span>
+    </div>
+  </header>
+
+  <main class="vm-main">
+    {% block main %}{% endblock %}
+  </main>
+
+  <div class="vm-toast" id="vm-toast"></div>
+
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

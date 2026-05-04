@@ -8,3 +8,7 @@ venv/
 .viralman/
 posts.jsonl
 *.local
+.viralman_unsubscribes.jsonl
+*.egg-info/
+build/
+dist/

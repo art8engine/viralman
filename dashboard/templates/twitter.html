@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="vm-pane">
+  <div class="vm-grid two">
+
+    <div class="vm-card">
+      <h2>compose</h2>
+      <p class="vm-hint">write your tweet (or thread — split parts with <code>---</code> on its own line)</p>
+      <textarea id="tw-body" rows="14" placeholder="…"></textarea>
+      <div class="vm-row vm-between">
+        <div class="vm-meta" id="tw-meta">0 / 280</div>
+        <div class="vm-row">
+          <button id="tw-preview" class="vm-btn">preview</button>
+          <button id="tw-post"    class="vm-btn primary">post</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="vm-card">
+      <h2>preview</h2>
+      <div class="vm-subhead">flags</div>
+      <ul id="tw-flags" class="vm-flags vm-empty">no preview yet</ul>
+      <div class="vm-subhead">compose URL fallback</div>
+      <a id="tw-compose-link" class="vm-mono link" target="_blank" rel="noopener">—</a>
+      <div class="vm-subhead">thread parts</div>
+      <ol id="tw-thread" class="vm-mono"></ol>
+    </div>
+
+    <div class="vm-card">
+      <h2>login</h2>
+      <p class="vm-hint">
+        OAuth 2.0 PKCE flow. Free tier (~1,500 posts/month) supports posting via API.
+        <strong>One-time setup:</strong> register an app at
+        <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a>
+        with redirect URI <code id="tw-redir">…</code>, then save its
+        <code>TWITTER_OAUTH2_CLIENT_ID</code> + <code>TWITTER_OAUTH2_CLIENT_SECRET</code>.
+      </p>
+      <div class="vm-row">
+        <button class="vm-btn primary" id="tw-oauth-start">login with X</button>
+        <button class="vm-btn ghost" id="tw-manual">enter tokens manually</button>
+      </div>
+      <details id="tw-manual-pane" class="vm-manual">
+        <summary>manual credentials</summary>
+        <p class="vm-hint">For OAuth 1.0a tokens (used by post_twitter.py). Recommended path is the
+          shell skill <code>/viralman-login-twitter</code> — it pipes secrets via <code>read -s</code>.</p>
+        <div class="vm-creds-form" data-platform="twitter">
+          <label>API Key (consumer key)
+            <input type="text" data-key="TWITTER_API_KEY" autocomplete="off"></label>
+          <label>API Secret
+            <input type="password" data-key="TWITTER_API_SECRET" data-secret autocomplete="off"></label>
+          <label>Access Token
+            <input type="text" data-key="TWITTER_ACCESS_TOKEN" autocomplete="off"></label>
+          <label>Access Secret
+            <input type="password" data-key="TWITTER_ACCESS_SECRET" data-secret autocomplete="off"></label>
+          <label>Handle (without @)
+            <input type="text" data-key="TWITTER_HANDLE" autocomplete="off"></label>
+          <button class="vm-btn small">save</button>
+        </div>
+      </details>
+      <div class="vm-subhead">status</div>
+      <pre class="vm-mono" id="tw-cred-status">checking…</pre>
+    </div>
+
+    <div class="vm-card">
+      <h2>cheat sheet</h2>
+      <ul class="vm-list">
+        <li>limit: <strong>280</strong> chars per tweet, max ~25 tweets per thread</li>
+        <li>hashtag cap: 2 (more = AI-tell)</li>
+        <li>no API tokens? we open the compose URL in your browser</li>
+        <li>banned phrases live in <code>voice/ai-tells.md</code> — flagged below preview</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/twitter.js') }}"></script>
+{% endblock %}

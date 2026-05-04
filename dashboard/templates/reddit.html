@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="vm-pane">
+  <div class="vm-grid two">
+
+    <div class="vm-card">
+      <h2>compose</h2>
+      <label class="vm-field">
+        subreddit
+        <input type="text" id="rd-sub" placeholder="programming">
+      </label>
+      <label class="vm-field">
+        title
+        <input type="text" id="rd-title" placeholder="">
+      </label>
+      <label class="vm-field">
+        flair id (optional)
+        <input type="text" id="rd-flair" placeholder="">
+      </label>
+      <label class="vm-field">
+        body (markdown)
+        <textarea id="rd-body" rows="14"></textarea>
+      </label>
+      <div class="vm-row vm-between">
+        <div class="vm-meta" id="rd-meta">title 0 / 300 · body 0 chars</div>
+        <div class="vm-row">
+          <button id="rd-preview" class="vm-btn">preview</button>
+          <button id="rd-post"    class="vm-btn primary">post</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="vm-card">
+      <h2>preview</h2>
+      <div class="vm-subhead">flags</div>
+      <ul id="rd-flags" class="vm-flags vm-empty">no preview yet</ul>
+      <div class="vm-subhead">submit URL fallback</div>
+      <a id="rd-compose-link" class="vm-mono link" target="_blank" rel="noopener">—</a>
+    </div>
+
+    <div class="vm-card">
+      <h2>login</h2>
+      <p class="vm-hint">
+        Two flows. <strong>OAuth web app</strong> (recommended) or <strong>script-app</strong>
+        with username + password (existing PRAW path).
+        OAuth requires a separate "web app" registration at
+        <a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a>
+        with redirect URI <code id="rd-redir">…</code>.
+      </p>
+      <div class="vm-row">
+        <button class="vm-btn primary" id="rd-oauth-start">login with reddit</button>
+        <button class="vm-btn ghost"   id="rd-manual">script-app credentials</button>
+      </div>
+      <details id="rd-manual-pane" class="vm-manual">
+        <summary>script-app credentials</summary>
+        <p class="vm-hint">For PRAW password grant (current default). Note: 2FA blocks this — use a
+          dedicated posting account or follow the OAuth path above.</p>
+        <div class="vm-creds-form" data-platform="reddit">
+          <label>client_id (visible in dev portal, non-secret)
+            <input type="text" data-key="REDDIT_CLIENT_ID" autocomplete="off"></label>
+          <label>client_secret
+            <input type="password" data-key="REDDIT_CLIENT_SECRET" data-secret autocomplete="off"></label>
+          <label>username
+            <input type="text" data-key="REDDIT_USERNAME" autocomplete="off"></label>
+          <label>password
+            <input type="password" data-key="REDDIT_PASSWORD" data-secret autocomplete="off"></label>
+          <label>user agent (optional)
+            <input type="text" data-key="REDDIT_USER_AGENT" placeholder="viralman/0.2 by yourname"></label>
+          <button class="vm-btn small">save</button>
+        </div>
+      </details>
+      <div class="vm-subhead">status</div>
+      <pre class="vm-mono" id="rd-cred-status">checking…</pre>
+    </div>
+
+    <div class="vm-card">
+      <h2>cheat sheet</h2>
+      <ul class="vm-list">
+        <li>title cap: <strong>300</strong>, body cap: ~40k</li>
+        <li>hashtags: never (Reddit hates them)</li>
+        <li>flair: many subs require one — copy the flair_id from the sub's css/about</li>
+        <li>account age + karma matter; new accounts get auto-removed</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reddit.js') }}"></script>
+{% endblock %}

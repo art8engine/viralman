@@ -1,7 +1,7 @@
 {
   "name": "viralman",
-  "version": "0.1.0",
-  "description": "Claude Code agent that writes platform-tuned, non-AI-feeling viral / promo posts for Reddit, X (Twitter), and LinkedIn — and posts them under the user's own accounts with explicit permission.",
+  "version": "0.2.0",
+  "description": "Local dashboard + multi-platform poster + gitmail outreach. Writes non-AI-feeling promo posts for Reddit / X / LinkedIn, and runs targeted email campaigns to stargazers of similar GitHub repos — all under the user's own accounts with explicit permission.",
   "author": {
     "name": "viralman contributors"
   },
@@ -16,7 +16,10 @@
     "reddit",
     "twitter",
     "linkedin",
-    "social-posting"
+    "social-posting",
+    "gitmail",
+    "outreach",
+    "dashboard"
   ],
   "skills": "./skills/",
   "commands": "./commands/",

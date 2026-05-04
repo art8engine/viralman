@@ -1,15 +1,15 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "viralman",
-  "description": "Write non-AI-feeling viral / promo posts for Reddit, X, and LinkedIn from inside Claude Code.",
+  "description": "Local dashboard + multi-platform poster + gitmail outreach for open-source maintainers, all from inside Claude Code.",
   "owner": {
     "name": "viralman contributors"
   },
   "plugins": [
     {
       "name": "viralman",
-      "description": "Generates platform-tuned posts that don't read like AI, then publishes them to the user's own Reddit / LinkedIn / X accounts after explicit confirmation.",
-      "version": "0.1.0",
+      "description": "Black-themed local dashboard (twitter / reddit / gitmail) that drafts non-AI-feeling posts, runs targeted email outreach to stargazers of similar GitHub repos, and publishes only after explicit confirmation.",
+      "version": "0.2.0",
       "source": "./",
       "category": "marketing",
       "homepage": "https://github.com/art8engine/viralman",
@@ -19,9 +19,12 @@
         "reddit",
         "twitter",
         "linkedin",
+        "gitmail",
+        "outreach",
+        "dashboard",
         "growth"
       ]
     }
   ],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

@@ -1,15 +1,14 @@
 ---
 name: dashboard
-description: Start the local viralman dashboard (Flask app at http://localhost:8765 with three pages — twitter, reddit, gitmail) and open it in the user's browser. The dashboard owns OAuth login, post previews, and the gitmail pipeline.
+description: Start the local viralman dashboard — a single-page 4-step wizard (project → generate → targets → send) at http://localhost:8765, with unified top-right login and a language switcher (en / ko / zh / ja).
 level: 2
 ---
 
 # Dashboard skill
 
-The dashboard is the user's primary surface. It exposes everything viralman
-can do without making them remember CLI flags. This skill exists so phrases
-like "open the dashboard", "viralman 띄워줘", "run viralman" route to a
-deterministic flow.
+The dashboard is one page, four steps. It replaces the old per-platform tabs.
+This skill exists so phrases like "open the dashboard", "viralman 띄워줘",
+"run viralman" route to a deterministic flow.
 
 ## Trigger phrases
 
@@ -23,24 +22,28 @@ Auto-trigger on:
 If the user typed `/dashboard`, follow `commands/dashboard.md` for argument
 parsing.
 
-## What it does
+## What the page is
 
-The dashboard runs a tiny Flask app at `http://localhost:8765` (default
-port). Three pages, one shared dark header:
+One URL (`/`), four sections gated step by step:
 
-| Page | Purpose |
-|---|---|
-| `/twitter` | compose, preview (sniffer flags + char count + compose URL fallback), post |
-| `/reddit`  | compose, subreddit + title + flair + body, preview, post |
-| `/gitmail` | start outreach jobs with live progress + per-recipient preview |
+| # | Step | What |
+|---|---|---|
+| 1 | Project | name, GitHub URL, one-line pitch, description |
+| 2 | Generate | pick channels (X / Reddit / Gitmail), pick LLM provider + voice mode, generate drafts |
+| 3 | Targets | hashtags, subreddits, scrapeable comment threads, recipient count for gitmail |
+| 4 | Send | dry-run toggle + explicit confirm checkbox + live progress per channel |
 
-Login is OAuth-first per platform with a manual-tokens fallback. The OAuth
-flow ends at `/oauth/<platform>/callback` and saves tokens to
-`~/.viralman/.env` via `save_creds.py`.
+A few things to know:
+
+- The header shows a **Connect 0/4 ▾** dropdown on the right. That's the
+  single login surface. OAuth (X / Reddit / LinkedIn) and manual tokens
+  (Gitmail SMTP+LLM) all live in there.
+- A small **EN / 한 / 中 / 日** picker is to the left of Connect. Persists
+  in `localStorage`. Auto-detects from `navigator.language` on first visit.
+- Step 4 won't enable the Send button until the user checks the explicit
+  "I confirm I want to send under my accounts" box.
 
 ## Step 1 — Start the server
-
-Run in the foreground:
 
 ```bash
 viralman                            # if installed
@@ -48,46 +51,41 @@ viralman                            # if installed
 ./scripts/dashboard.py              # equivalent
 ```
 
-Default flags: `--host 127.0.0.1 --port 8765` and a browser tab is auto-opened.
-Pass `--no-browser` if the user wants no auto-open.
+Default flags: `--host 127.0.0.1 --port 8765`, browser auto-opens. Pass
+`--no-browser` if no auto-open is wanted.
 
 If Flask is missing, the entry script prints a precise install hint — relay
 it verbatim. Do NOT pip-install on the user's behalf without consent.
 
 ## Step 2 — Tell the user what's up
 
-After starting:
-
 ```
 viralman dashboard → http://localhost:8765
-  twitter:  http://localhost:8765/twitter
-  reddit:   http://localhost:8765/reddit
-  gitmail:  http://localhost:8765/gitmail
+  (single-page wizard, header switches language; "Connect ▾" is your login)
 Ctrl-C to stop.
 ```
 
-A browser tab should open automatically. If the user is over SSH or has no
-browser, surface the URLs and stop.
+If the user is over SSH or has no browser, surface the URL and stop.
 
 ## Step 3 — Hands off
 
-Once the dashboard is up, the agent's job is done. The user drives from the
-browser. Do NOT shadow-post on their behalf, and do NOT call the post-API
-endpoints from inside the chat — those are gated behind the dashboard's
-explicit "post" buttons for a reason.
+The user drives from the browser. Do not shadow-post on their behalf, and
+do not call the post-API endpoints from inside chat — those are gated
+behind the dashboard's explicit "send" button for a reason.
 
 ## Common issues
 
-- **port already in use**: `viralman --port 8766` (or whatever).
-- **OAuth login button does nothing**: the user hasn't registered the app's
-  client_id + secret. Each platform's login pane shows the exact redirect URI
-  to use (`http://localhost:8765/oauth/<platform>/callback`). Point them at
-  the dev portal:
-  - twitter:  https://developer.twitter.com/en/portal/dashboard
-  - reddit:   https://www.reddit.com/prefs/apps   (must be "web app" type)
-  - linkedin: https://www.linkedin.com/developers/apps
+- **Port already in use**: `viralman --port 8766` (or whatever).
+- **Connect dropdown shows 0/4**: the user hasn't saved any creds yet.
+  Point them at `/viralman-login-{reddit,twitter,linkedin,gitmail}` skills,
+  or have them use the per-row "tokens" / "setup" buttons in the dropdown.
+- **OAuth login button does nothing**: the platform's `CLIENT_ID` /
+  `CLIENT_SECRET` aren't saved yet. Each Connect dropdown row's "tokens"
+  modal lists exactly what to register.
 - **gitmail won't start**: missing creds. The skill `viralman-login-gitmail`
-  walks the user through `GITHUB_TOKEN`, `SMTP_*`, and an LLM key.
+  walks the user through `GITHUB_TOKEN`, `SMTP_*`, and one LLM key.
+- **Language picker doesn't change strings**: hard-refresh; an old
+  service-worker-cached page can hold stale templates.
 
 ## Boundaries
 
@@ -95,4 +93,4 @@ explicit "post" buttons for a reason.
   `creds.py` / `post_*.py` / `gitmail.py` do.
 - The skill never starts the server with `--debug` unless the user asked —
   the reloader can race with the OAuth state in `session`.
-- The skill never bypasses dry-run defaults on the gitmail page.
+- The skill never bypasses dry-run defaults on the gitmail send.

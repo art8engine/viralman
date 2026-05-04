@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/viralman.png" alt="viralman" width="520">
-</p>
-
 <h1 align="center">viralman</h1>
 
 <p align="center">
@@ -16,45 +12,34 @@
   <a href="README.ja.md">日本語</a>
 </p>
 
+<p align="center">
+  <img src="assets/viralman.png" alt="viralman" width="520">
+</p>
+
 ---
 
-Local dashboard + multi-platform poster + targeted outreach for open-source maintainers. Paste a link, get platform-tuned drafts that don't read like AI, and let viralman send them under your own accounts — only after you say yes.
+Local dashboard + multi-platform poster + targeted outreach for open-source maintainers. One project description in, platform-tuned drafts and recipient lists out. Posts go live only after you confirm.
 
 ```bash
-viralman                 # opens http://localhost:8765 in your browser
+viralman                 # opens http://localhost:8765
 ```
 
-> 이런 내용으로 바이럴해줘: 우리 팀이 만든 오픈소스 K8s autoscaler가 비용을 47% 줄였다
+## Features
 
-You get three drafts — one per platform — that don't read like AI slop, plus a one-key confirm before anything goes live.
+- **Multi-platform drafts** — `/viral` turns one intent into Reddit / X / LinkedIn drafts that don't sound like a chatbot.
+- **Local dashboard** — black 4-step wizard. Project → Generate → Targets → Send. One unified login at the top.
+- **gitmail outreach** — find GitHub repos like yours, walk their stargazers, send each a short personalized note. Up to 10,000 recipients with a one-click unsubscribe link baked in.
+- **AI-tell sniffer** — ~30 heuristics scan every draft for clichés, em-dash floods, balanced tricolons, and missing anchors. Three rewrite passes; refuses to auto-post a still-flagged draft.
+- **OAuth or manual** — sign in to X / Reddit / LinkedIn from the dashboard, or paste tokens. Secrets pipe through `read -s` and never enter the LLM context.
+- **Multi-LLM** — Claude, OpenAI, or Gemini, your choice (auto-detected from saved keys).
 
-## What viralman does
+## Use cases
 
-| | What |
-|---|---|
-| **`/viral`** | One intent → platform-tuned drafts for **Reddit**, **X**, and **LinkedIn**. AI-tell sniffer scrubs each draft against ~30 heuristics until it stops smelling like a chatbot. |
-| **`viralman`** | Local dashboard at `http://localhost:8765`. Three pages — twitter / reddit / gitmail — switch from the header. OAuth login per platform. |
-| **`/gitmail`** | Tell us about your project. We find the GitHub repos most like yours, walk their stargazers, resolve public emails, and send each one a short, personalized note (Claude / GPT / Gemini, your choice). One-click unsubscribe baked in. |
-| Safety | Always-confirm by default. Sniffer can refuse to ship a draft. Rate limits on every send. Secrets go through `read -s`, not the LLM. |
-
-## The dashboard
-
-Three pages, dark theme, header switches between them.
-
-- **Twitter** — paste a draft, watch char count + sniffer flags update live, post via the API or fall back to the compose URL.
-- **Reddit** — subreddit + title + flair + body. Built-in checks for Reddit-specific tells (no hashtags, anchored claims).
-- **gitmail** — drag the slider (1 to 10,000 target users), pick an LLM provider, hit start. Live progress: analyse → search repos → collect emails → compose → send. Per-recipient preview pane.
-
-## How "doesn't feel AI" actually works
-
-The `ai-tell-sniffer` agent runs on every draft, looking for:
-
-- Banned phrases — "delve", "tapestry", "leverage", "navigate the landscape", "it's not just X — it's Y", "let's dive in", "supercharge", and ~20 more.
-- Em-dash density above 1 per 60 words.
-- Balanced tricolons. Closing moralizers. Hashtag stuffing.
-- Generic-claim posts with no anchor — every draft must contain a number, a name, a time anchor, or an admission of doubt.
-
-Three rewrite passes. If it still trips flags, the cleanest version is shown to you with the warnings surfaced — and viralman refuses to auto-post it.
+- **Launching v1.0** — describe what shipped; get a Reddit post for r/programming, an X thread, a LinkedIn announcement, and an outreach list of devs who starred related tools.
+- **Side project announcement** — one-shot multi-channel post without writing three different versions.
+- **Finding the right place to post** — let viralman scrape and suggest subreddits, hashtags, and recent threads to comment on, instead of guessing.
+- **Re-engaging old stargazers of similar tools** — gitmail builds a recipient list from public profile and commit emails, with a personalized opener mentioning the repo they starred.
+- **Avoiding the AI-slop tax** — most "AI social posters" produce content that gets called out instantly. The sniffer is the headline feature.
 
 ## Install
 
@@ -65,7 +50,7 @@ claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### As a CLI (so the literal `viralman` word works in your shell)
+### As a CLI
 
 ```bash
 git clone https://github.com/art8engine/viralman
@@ -74,7 +59,6 @@ python3 -m venv .venv
 .venv/bin/pip install flask
 .venv/bin/pip install -e .
 
-# create a one-line shim so viralman is on your PATH from anywhere
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/viralman <<'SH'
 #!/usr/bin/env bash
@@ -83,47 +67,47 @@ SH
 chmod +x ~/.local/bin/viralman
 ```
 
-> **Heads up — Python 3.14**: setuptools' editable install relies on executable `.pth` files, which 3.14 disables. The shim above bypasses that and is the recommended path on 3.14+.
+> **Python 3.14**: setuptools' editable install relies on executable `.pth` files, which 3.14 disables. The shim above bypasses that and is the recommended path on 3.14+.
 
 ### Credentials (one-time, per platform)
-
-Four dedicated skills walk you through each setup. Run only the ones you need:
 
 ```
 /viralman-login-reddit       # ~3 min, free
 /viralman-login-twitter      # ~5 min, free tier (~1,500 posts/month)
-/viralman-login-linkedin     # ~10 min, OAuth dance + 60-day token refresh
+/viralman-login-linkedin     # ~10 min, OAuth + 60-day token refresh
 /viralman-login-gitmail      # ~5 min, GitHub token + SMTP + one LLM API key
 ```
 
-**Secrets never enter the LLM context** — the skills have you pipe passwords and tokens through `read -s` directly into a save script. Credentials end up in `~/.viralman/.env` with `chmod 600`.
+Secrets stay out of the LLM context — skills pipe them via `read -s` into `~/.viralman/.env` (`chmod 600`).
 
 ## Usage
 
-### Drafting + posting
-
-```bash
-# default: drafts for all three platforms, growth-story mode, ask before posting
-/viral our open-source K8s autoscaler cut a real prod bill by 47% in 3 weeks
-
-# pick mode
-/viral --mode casual-hype "we shipped the gnarliest race-condition fix of my life"
-
-# pick targets
-/viral --only reddit,x "looking for r/programming feedback on this go regex lib"
-
-# Korean output
-/viral --lang ko "..."
-```
-
-### Dashboard
+### Dashboard (recommended)
 
 ```bash
 viralman                              # → http://localhost:8765
-viralman --port 9000 --no-browser
 ```
 
-### gitmail outreach
+The dashboard walks the 4-step flow:
+
+1. **Project** — name, URL, one-line pitch, description.
+2. **Generate** — pick channels (X / Reddit / Gitmail), get drafts.
+3. **Targets** — pick subreddits, hashtags, comment threads, recipient list. Each is auto-suggested from your project keywords.
+4. **Send** — confirm, watch live progress.
+
+### Slash commands
+
+```bash
+/viral our open-source K8s autoscaler cut a real prod bill by 47% in 3 weeks
+/viral --mode casual-hype "we shipped the gnarliest race-condition fix of my life"
+/viral --only reddit,x "looking for r/programming feedback on this go regex lib"
+/viral --lang ko "..."
+
+/dashboard                                       # opens the web UI
+/gitmail "A K8s autoscaler in Go" --max-users 100 --dry-run
+```
+
+### gitmail CLI
 
 ```bash
 ./scripts/gitmail.py run \
@@ -135,31 +119,20 @@ viralman --port 9000 --no-browser
   --dry-run
 ```
 
-Every email gets a one-click unsubscribe link plus a `List-Unsubscribe` header. SMTP is rate-limited to 30/min by default (override with `SMTP_RATE_PER_MIN`).
+Every email gets a one-click unsubscribe link plus a `List-Unsubscribe` header. SMTP is rate-limited (default 30/min, override via `SMTP_RATE_PER_MIN`).
 
-## Repo layout
+## How "doesn't feel AI" actually works
 
-```
-viralman/
-├── bin/viralman                    # `viralman` CLI entry → starts dashboard
-├── pyproject.toml                  # `pip install -e .` registers the command
-├── viralman_cli/                   # console-script package
-├── dashboard/                      # Flask app (server, api, oauth, templates, static)
-├── commands/                       # /viral, /dashboard, /gitmail
-├── skills/                         # viral, dashboard, gitmail, viralman-login-*
-├── agents/                         # viral-writer, ai-tell-sniffer, publisher
-├── voice/                          # ai-tells, platform-norms, mode templates, reference corpus
-├── scripts/                        # post_*.py, gitmail.py, dashboard.py, save_creds.py
-│   └── lib/                        # creds, sniffer_check, github_search, llm_compose, smtp_send
-├── tests/                          # sniffer + gitmail compose tests
-├── examples/                       # end-to-end transcripts
-└── assets/                         # README art
-```
+The `ai-tell-sniffer` agent runs on every draft. It checks for banned phrases ("delve", "leverage", "let's dive in", "supercharge", and ~20 more), em-dash density above 1 per 60 words, balanced tricolons, closing moralizers, hashtag stuffing, and posts with no concrete anchor (number, name, time, or admission). Three rewrite passes. If flagged content remains, it surfaces to you with warnings and refuses to auto-post.
 
 ## Status
 
-v0.2.0 — local dashboard + gitmail outreach + OAuth logins added. The original `/viral` flow from v0.1.0 is unchanged.
+v0.2.0 — local dashboard + gitmail outreach + OAuth logins. The original `/viral` flow from v0.1.0 is unchanged.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md).
 
 ## License
 
-MIT — fork, vendor, ship.
+MIT.

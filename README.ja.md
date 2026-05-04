@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="assets/viralman.png" alt="viralman" width="520">
-</p>
-
 <h1 align="center">viralman</h1>
 
 <p align="center">
   <b>コードは君が、バズはこっちが。</b><br>
-  作るだけでいい — 拡散は viralman の仕事だ。
+  作るだけでいい。拡散は viralman がやる。
 </p>
 
 <p align="center">
@@ -16,45 +12,34 @@
   <a href="README.ja.md"><b>日本語</b></a>
 </p>
 
+<p align="center">
+  <img src="assets/viralman.png" alt="viralman" width="520">
+</p>
+
 ---
 
-OSS メンテナーのためのローカルダッシュボード + マルチプラットフォーム投稿 + ターゲット型アウトリーチ。一行の意図を投げると、AI 臭くないプラットフォームごとの下書きを生成し、あなたのアカウントから配信する — 確認ボタンを押した後だけ。
+OSS メンテナー向けのローカルダッシュボード + マルチプラットフォーム投稿 + ターゲットアウトリーチ。プロジェクトの説明を一度書けば、各プラットフォーム用の下書きと送信先リストが揃う。配信は確認後だけ。
 
 ```bash
-viralman                 # ブラウザで http://localhost:8765 が自動的に開く
+viralman                 # http://localhost:8765 が自動で開く
 ```
 
-> このネタをバズらせて：チームで作った OSS の K8s autoscaler が本番コストを 47% 削減した
+## 機能
 
-3 プラットフォーム分の下書きが同時に出る。AI スロップ感のない文体で、配信前にもう一度確認を求められる。
+- **マルチプラットフォーム下書き** — `/viral` 一発で Reddit / X / LinkedIn 用の下書き。AI 臭なし。
+- **ローカルダッシュボード** — ダーク基調の 4 ステップ: プロジェクト → 生成 → ターゲット → 送信。ログインは上部に統一。
+- **gitmail アウトリーチ** — GitHub で似たリポを探し、スターした人に短い個別メール。最大 1 万通、ワンクリック解除リンク自動付与。
+- **AI 痕跡スニファ** — 約 30 のヒューリスティクスでクリシェ、em-dash 過剰、整いすぎた三項列挙、アンカー欠落を検出。最大 3 回リライト、それでもダメなら自動配信を拒否。
+- **OAuth または手動** — ダッシュボードで X / Reddit / LinkedIn にログインするか、トークン直貼り。秘密値は LLM コンテキストに絶対入らない。
+- **マルチ LLM** — Claude / OpenAI / Gemini から選択（保存済みキーで自動判別）。
 
-## viralman ができること
+## こんな時に使う
 
-| | 内容 |
-|---|---|
-| **`/viral`** | 一行の意図 → **Reddit / X / LinkedIn** 別の下書き。AI 臭判定スニファが約 30 のヒューリスティクスでチャットボット臭を抜いていきます。 |
-| **`viralman`** | ローカルダッシュボード (`http://localhost:8765`)。3 ページ — twitter / reddit / gitmail — ヘッダーから瞬時に切替。プラットフォームごとに OAuth ログイン。 |
-| **`/gitmail`** | プロジェクトの説明を渡すと、GitHub で最も似たリポを見つけ、スター押した人を辿り、公開メールを抽出して、Claude / GPT / Gemini（お好みで）で短い個別メールを送ります。ワンクリック解除リンク自動付与。 |
-| 安全 | デフォルトは常に確認。スニファが配信を拒否することも。送信ごとにレート制限。秘密値は `read -s` だけ、LLM コンテキストには絶対入りません。 |
-
-## ダッシュボード
-
-3 ページ、ダークテーマ、ヘッダーで切替。
-
-- **Twitter** — 下書きを入力すると、文字数とスニファのフラグがリアルタイム更新。API 配信または compose URL フォールバック。
-- **Reddit** — サブレディット + タイトル + フレア + 本文。Reddit 特有の地雷（ハッシュタグ禁止、アンカー必須など）を専用ルールでチェック。
-- **gitmail** — スライダー（1〜10,000 名）、LLM プロバイダ選択、開始。リアルタイム進捗: analyse → リポ検索 → メール収集 → 文面作成 → 送信。受信者ごとのプレビュー。
-
-## 「AI っぽくない」を実現する仕組み
-
-`ai-tell-sniffer` エージェントが全下書きをチェック:
-
-- 禁止表現 — "delve", "tapestry", "leverage", "navigate the landscape", "let's dive in", "supercharge", ほか約 20。
-- 60 語あたり em-dash が 1 個を超える。
-- バランスの取れた三項列挙。締めの説教。ハッシュタグ詰め込み。
-- アンカーのない一般論 — 全下書きに数字 / 固有名 / 時刻アンカー / 不確実性の表明のいずれかが必須。
-
-リライトは最大 3 回。それでもフラグが残るなら、最も綺麗なバージョンを警告つきで提示し — 自動配信は拒否します。
+- **v1.0 ローンチ** — 何をリリースしたか書けば、r/programming 向け Reddit 投稿、X スレッド、LinkedIn 告知、類似ツールにスターした開発者のアウトリーチリストまで一気に。
+- **副業プロジェクトの告知** — 3 プラットフォーム用に書き分け不要。一度入力 → 全チャネル。
+- **どこに投稿すべきか分からない** — viralman がキーワードからサブレディット、ハッシュタグ、コメントできる最近のスレッドをスクレイプして提案。
+- **類似ツールの古いスター持ちを再エンゲージ** — gitmail が公開プロフィールとコミットメールから受信者リストを作り、相手がスターしたリポに触れる導入で個別化。
+- **AI スロップ回避** — 大半の「AI 投稿ツール」は一発でバレる。スニファこそ viralman の差別化点。
 
 ## インストール
 
@@ -65,7 +50,7 @@ claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### CLI として（`viralman` 一語をシェルで使うため）
+### CLI として
 
 ```bash
 git clone https://github.com/art8engine/viralman
@@ -74,7 +59,7 @@ python3 -m venv .venv
 .venv/bin/pip install flask
 .venv/bin/pip install -e .
 
-# どこからでも viralman が動くように PATH に shim を 1 つ作る
+# どこからでも viralman が動くように PATH に shim を 1 つ
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/viralman <<'SH'
 #!/usr/bin/env bash
@@ -83,9 +68,9 @@ SH
 chmod +x ~/.local/bin/viralman
 ```
 
-> **注意 — Python 3.14**: setuptools の editable install が使う実行可能 `.pth` ファイルが Python 3.14 で無効化されました。3.14+ では上の shim 方式を推奨します。
+> **Python 3.14**: setuptools の editable install が使う実行可能 `.pth` ファイルが 3.14 で無効化された。3.14+ は上の shim 推奨。
 
-### 認証情報（プラットフォームごとに 1 回）
+### 認証情報（一度だけ）
 
 必要なものだけ:
 
@@ -96,34 +81,35 @@ chmod +x ~/.local/bin/viralman
 /viralman-login-gitmail      # 約 5 分、GitHub トークン + SMTP + LLM API キー 1 つ
 ```
 
-**秘密値は LLM コンテキストに絶対に入りません** — スキルが `read -s` で直接保存スクリプトにパイプするように案内します。認証情報は `~/.viralman/.env` に `chmod 600` で保存されます。
+秘密値は LLM コンテキストに入らない。`read -s` で直接 `~/.viralman/.env`（`chmod 600`）へ。
 
 ## 使い方
 
-### 下書き作成 + 配信
-
-```bash
-# デフォルト: 3 プラットフォーム、growth-story モード、配信前に確認
-/viral OSS で作った K8s autoscaler が本番コストを 3 週間で 47% 削減した
-
-# モード指定
-/viral --mode casual-hype "人生で最高にエグい race condition を倒した"
-
-# 対象指定
-/viral --only reddit,x "この go regex ライブラリに r/programming のフィードバックが欲しい"
-
-# 言語指定（en / ko）
-/viral --lang ko "..."
-```
-
-### ダッシュボード
+### ダッシュボード（推奨）
 
 ```bash
 viralman                              # → http://localhost:8765
-viralman --port 9000 --no-browser
 ```
 
-### gitmail アウトリーチ
+4 ステップ:
+
+1. **プロジェクト** — 名前、URL、一言ピッチ、詳細。
+2. **生成** — チャンネル（X / Reddit / Gitmail）を選んで下書きを取得。
+3. **ターゲット** — サブレディット、ハッシュタグ、コメント先、受信者リスト。全部自動提案。
+4. **送信** — 確認してリアルタイム進捗。
+
+### スラッシュコマンド
+
+```bash
+/viral OSS で作った K8s autoscaler が本番コストを 3 週間で 47% 削減
+/viral --mode casual-hype "人生で最高にエグい race condition を倒した"
+/viral --only reddit,x "この go regex ライブラリに r/programming のフィードバックが欲しい"
+
+/dashboard                                       # Web UI
+/gitmail "Go 製 K8s autoscaler" --max-users 100 --dry-run
+```
+
+### gitmail CLI
 
 ```bash
 ./scripts/gitmail.py run \
@@ -135,31 +121,20 @@ viralman --port 9000 --no-browser
   --dry-run
 ```
 
-すべてのメールにワンクリック解除リンクと `List-Unsubscribe` ヘッダーが付きます。SMTP はデフォルトで毎分 30 通制限（`SMTP_RATE_PER_MIN` で変更可）。
+すべてのメールにワンクリック解除リンクと `List-Unsubscribe` ヘッダー付き。SMTP は毎分 30 通がデフォルト（`SMTP_RATE_PER_MIN` で変更可）。
 
-## リポジトリ構成
+## 「AI っぽくない」仕組み
 
-```
-viralman/
-├── bin/viralman                    # `viralman` CLI エントリ → ダッシュボード起動
-├── pyproject.toml                  # `pip install -e .` でコマンド登録
-├── viralman_cli/                   # console-script パッケージ
-├── dashboard/                      # Flask アプリ（server, api, oauth, テンプレ, 静的）
-├── commands/                       # /viral, /dashboard, /gitmail
-├── skills/                         # viral, dashboard, gitmail, viralman-login-*
-├── agents/                         # viral-writer, ai-tell-sniffer, publisher
-├── voice/                          # ai-tells, プラットフォーム規範, モードテンプレ, 参考コーパス
-├── scripts/                        # post_*.py, gitmail.py, dashboard.py, save_creds.py
-│   └── lib/                        # creds, sniffer_check, github_search, llm_compose, smtp_send
-├── tests/                          # スニファ + gitmail 作成テスト
-├── examples/                       # エンドツーエンドの実例
-└── assets/                         # README 用画像
-```
+`ai-tell-sniffer` が全下書きをチェック。禁止表現（"delve", "leverage", "let's dive in", "supercharge" など 20+）、60 語あたり em-dash が 1 個超、整いすぎた三項列挙、締めの説教、ハッシュタグ詰め込み、アンカーなしの一般論（数字 / 固有名 / 時刻 / 不確実性のいずれか必須）。最大 3 回リライト、それでも残れば自動配信拒否。
 
 ## ステータス
 
-v0.2.0 — ローカルダッシュボード + gitmail アウトリーチ + OAuth ログインを追加。v0.1.0 の `/viral` フローは変更なし。
+v0.2.0 — ローカルダッシュボード + gitmail アウトリーチ + OAuth ログイン。v0.1.0 の `/viral` は変更なし。
+
+## コントリビュート
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) と [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) を参照。セキュリティ報告は [`SECURITY.md`](SECURITY.md)。
 
 ## ライセンス
 
-MIT — fork、ベンダリング、出荷、すべて自由。
+MIT。

@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="assets/viralman.png" alt="viralman" width="520">
-</p>
-
 <h1 align="center">viralman</h1>
 
 <p align="center">
   <b>你写代码，我让它出圈。</b><br>
-  你只管造 — 推广交给 viralman。
+  你只管造，推广交给 viralman。
 </p>
 
 <p align="center">
@@ -16,45 +12,34 @@
   <a href="README.ja.md">日本語</a>
 </p>
 
+<p align="center">
+  <img src="assets/viralman.png" alt="viralman" width="520">
+</p>
+
 ---
 
-为开源维护者打造的本地仪表盘 + 多平台发布器 + 精准外联工具。一句话告诉 viralman 你想推什么，它会生成不像 AI 写的、贴合每个平台口吻的草稿，然后用你自己的账号发出去 —— 当然，是在你点确认之后。
+给开源维护者用的本地 dashboard + 多平台发布器 + 精准外联工具。一次写好项目说明，自动出各平台量身定制的草稿和收件人名单。点确认才发出去。
 
 ```bash
-viralman                 # 自动在浏览器打开 http://localhost:8765
+viralman                 # 自动打开 http://localhost:8765
 ```
 
-> 帮我把这件事做火：我们团队的开源 K8s 自动伸缩器把成本砍了 47%
+## 主要功能
 
-三个平台同时出三份草稿，每份都不像 AI slop，发布前还会再确认一次。
+- **多平台草稿** —— `/viral` 一句意图同时生成 Reddit / X / LinkedIn 草稿，读起来不像 AI。
+- **本地 dashboard** —— 黑色风格 4 步向导：项目 → 生成 → 目标 → 发送。登录入口顶部统一。
+- **gitmail 外联** —— 在 GitHub 找到和你最像的仓库，遍历其 stargazer，给每人发一封简短个性化邮件。最多 1 万收件人，自带一键退订。
+- **AI 痕迹 sniffer** —— 约 30 条规则扫描每份草稿：陈词滥调、em-dash 滥用、平衡三段式、缺锚点。最多 3 轮重写，仍标红就拒绝自动发布。
+- **OAuth 或手动** —— dashboard 登录 X / Reddit / LinkedIn，或粘贴 token。密码永远不进 LLM 上下文。
+- **多 LLM** —— Claude / OpenAI / Gemini 任选，按已存的 API key 自动识别。
 
-## viralman 做什么
+## 适用场景
 
-| | 内容 |
-|---|---|
-| **`/viral`** | 一句话意图 → **Reddit / X / LinkedIn** 各自的版本。AI 痕迹嗅探器用约 30 条规则反复打磨，直到读起来不像聊天机器人。 |
-| **`viralman`** | 本地仪表盘 (`http://localhost:8765`)。三个页面 —— twitter / reddit / gitmail，顶部一键切换。每个平台都支持 OAuth 登录。 |
-| **`/gitmail`** | 描述你的项目。viralman 在 GitHub 上找到最相似的仓库，遍历点过星的用户，提取公开邮箱，然后用 Claude / GPT / Gemini（你选）写一封简短个性化的邮件发出去。一键退订自动嵌入。 |
-| 安全 | 默认始终确认。嗅探器可拒绝发布。每次发送都有限流。密码经 `read -s` 直送磁盘，永远不进 LLM 上下文。 |
-
-## 仪表盘
-
-三个页面，黑色主题，顶部切换。
-
-- **Twitter** — 输入草稿，字数和嗅探器告警实时更新。API 发布或退回到 compose URL。
-- **Reddit** — 子版块 + 标题 + flair + 正文。专门检查 Reddit 上特别招黑的问题（禁用 hashtag、必须有具体锚点等）。
-- **gitmail** — 拖动滑块（1 到 10,000 个目标用户），选 LLM 提供商，点开始。实时进度：分析 → 搜索仓库 → 收集邮箱 → 写信 → 发送。每封信都可单独预览。
-
-## "看起来不像 AI 写的" 是怎么做到的
-
-`ai-tell-sniffer` 代理对每份草稿运行：
-
-- 禁用词 —— "delve", "tapestry", "leverage", "navigate the landscape", "let's dive in", "supercharge", 共约 20 多条。
-- 每 60 字超过 1 个 em-dash。
-- 三段平衡式罗列。结尾说教。Hashtag 堆砌。
-- 没有具体锚点的泛泛而谈 —— 每份草稿必须含数字、名词、时间锚或自我承认。
-
-最多三轮重写。还过不了就把最干净的那版连同警告一起给你 —— 不会自动发送有未消除标记的草稿。
+- **v1.0 发布** —— 写明上线了什么，立刻拿到 r/programming 的 Reddit 帖子、X 串文、LinkedIn 公告，加一份星过同类工具的开发者名单。
+- **副业项目宣告** —— 不必给三个平台各写一遍。一次输入 → 多渠道。
+- **不知道该在哪儿发** —— viralman 用项目关键词抓取并推荐合适的子版块、hashtag 和最近可以评论的帖子。
+- **重新激活同类工具的老 stargazer** —— gitmail 用公开 profile 和 commit 邮箱建名单，开场白会提到对方点过星的仓库。
+- **躲开 AI 味** —— 大多数 "AI 社交发帖工具" 一眼就被识破。Sniffer 是 viralman 的核心差异点。
 
 ## 安装
 
@@ -65,7 +50,7 @@ claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### 作为 CLI（让你在终端里直接敲 `viralman`）
+### 作为 CLI
 
 ```bash
 git clone https://github.com/art8engine/viralman
@@ -83,46 +68,48 @@ SH
 chmod +x ~/.local/bin/viralman
 ```
 
-> **注意 —— Python 3.14**：setuptools 的 editable install 依赖可执行 `.pth` 文件，3.14 已禁用。3.14+ 推荐用上面的 shim 方案。
+> **Python 3.14**：setuptools 的 editable install 依赖可执行 `.pth` 文件，3.14 已禁用。3.14+ 推荐用上面的 shim。
 
-### 凭证（一次性，按平台）
+### 凭证（一次性）
 
 按需运行：
 
 ```
 /viralman-login-reddit       # 约 3 分钟，免费
-/viralman-login-twitter      # 约 5 分钟，免费档位（约 1,500 帖/月）
+/viralman-login-twitter      # 约 5 分钟，免费档（约 1,500 帖/月）
 /viralman-login-linkedin     # 约 10 分钟，OAuth + 60 天令牌刷新
 /viralman-login-gitmail      # 约 5 分钟，GitHub 令牌 + SMTP + 一个 LLM API key
 ```
 
-**密码永远不进 LLM 上下文** —— 脚本通过 `read -s` 直接管道写入存储工具。最终凭证落在 `~/.viralman/.env`，权限 `chmod 600`。
+密码不进 LLM 上下文。脚本通过 `read -s` 直接管道写入 `~/.viralman/.env`（`chmod 600`）。
 
 ## 用法
 
-### 写草稿 + 发布
-
-```bash
-# 默认：三个平台，growth-story 模式，发布前确认
-/viral 我们的开源 K8s 自动伸缩器三周内把生产账单砍了 47%
-
-# 指定模式
-/viral --mode casual-hype "刚解掉这辈子最难的 race condition"
-
-# 指定目标
-/viral --only reddit,x "想要 r/programming 对这个 go regex 库的反馈"
-
-# 中文输出（暂未支持，本工具默认输出英语 / 韩语）
-```
-
-### 仪表盘
+### Dashboard（推荐）
 
 ```bash
 viralman                              # → http://localhost:8765
-viralman --port 9000 --no-browser
 ```
 
-### gitmail 外联
+4 步：
+
+1. **项目** —— 名称、URL、一句话定位、详细描述。
+2. **生成** —— 选频道（X / Reddit / Gitmail），拿草稿。
+3. **目标** —— 选子版块、hashtag、可评论的帖子、收件人名单。全部自动建议。
+4. **发送** —— 确认，看实时进度。
+
+### 斜杠命令
+
+```bash
+/viral 我们开源的 K8s 自动伸缩器三周内把生产账单砍了 47%
+/viral --mode casual-hype "刚搞定这辈子最难的 race condition"
+/viral --only reddit,x "想要 r/programming 对这个 go regex 库的反馈"
+
+/dashboard                                       # 网页 UI
+/gitmail "Go 写的 K8s autoscaler" --max-users 100 --dry-run
+```
+
+### gitmail CLI
 
 ```bash
 ./scripts/gitmail.py run \
@@ -134,31 +121,20 @@ viralman --port 9000 --no-browser
   --dry-run
 ```
 
-每封邮件都自带一键退订链接和 `List-Unsubscribe` 头。SMTP 默认 30 封/分钟（可通过 `SMTP_RATE_PER_MIN` 调整）。
+每封邮件自带一键退订链接和 `List-Unsubscribe` 头。SMTP 默认 30 封/分钟（`SMTP_RATE_PER_MIN` 可调）。
 
-## 仓库结构
+## "看起来不像 AI" 是怎么做到的
 
-```
-viralman/
-├── bin/viralman                    # `viralman` CLI 入口 → 启动仪表盘
-├── pyproject.toml                  # `pip install -e .` 注册命令
-├── viralman_cli/                   # console-script 包
-├── dashboard/                      # Flask 应用（server, api, oauth, 模板, 静态）
-├── commands/                       # /viral, /dashboard, /gitmail
-├── skills/                         # viral, dashboard, gitmail, viralman-login-*
-├── agents/                         # viral-writer, ai-tell-sniffer, publisher
-├── voice/                          # ai-tells, 平台规范, 模式模板, 参考语料
-├── scripts/                        # post_*.py, gitmail.py, dashboard.py, save_creds.py
-│   └── lib/                        # creds, sniffer_check, github_search, llm_compose, smtp_send
-├── tests/                          # 嗅探器 + gitmail 测试
-├── examples/                       # 端到端实录
-└── assets/                         # README 配图
-```
+`ai-tell-sniffer` 对每份草稿运行：禁用词（"delve", "leverage", "let's dive in", "supercharge" 等 20+），每 60 字超过 1 个 em-dash，平衡式三段列举，结尾说教，hashtag 堆砌，没有具体锚点（数字/名称/时间/自我承认）的泛泛而谈。最多 3 轮重写，仍标红就拒绝自动发布。
 
 ## 状态
 
-v0.2.0 —— 本地仪表盘 + gitmail 外联 + OAuth 登录加入。v0.1.0 的 `/viral` 流程未变。
+v0.2.0 —— 本地 dashboard + gitmail 外联 + OAuth 登录。v0.1.0 的 `/viral` 流程未变。
+
+## 贡献
+
+见 [`CONTRIBUTING.md`](CONTRIBUTING.md) 和 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)。安全问题：[`SECURITY.md`](SECURITY.md)。
 
 ## 协议
 
-MIT —— 随便 fork、内化、发布。
+MIT。

@@ -1,38 +1,73 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>viralman — {{ active }}</title>
+  <title>viralman</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
-<body data-page="{{ active }}">
-  <header class="vm-header">
-    <a class="vm-logo" href="/">viralman</a>
-    <nav class="vm-tabs">
-      <a class="vm-tab {{ 'active' if active == 'twitter' else '' }}" href="/twitter">
-        <span class="dot"></span>twitter
-      </a>
-      <a class="vm-tab {{ 'active' if active == 'reddit' else '' }}" href="/reddit">
-        <span class="dot"></span>reddit
-      </a>
-      <a class="vm-tab {{ 'active' if active == 'gitmail' else '' }}" href="/gitmail">
-        <span class="dot"></span>gitmail
-      </a>
-    </nav>
-    <div class="vm-status" id="vm-status" data-platform="{{ active }}">
-      <span class="vm-status-dot pending"></span>
-      <span class="vm-status-text">checking…</span>
+<body>
+  <header class="hd">
+    <a class="hd-logo" href="/">viralman</a>
+    <div class="hd-spacer"></div>
+    <select class="hd-lang" id="lang-pick" aria-label="language">
+      <option value="en">EN</option>
+      <option value="ko">한</option>
+      <option value="zh">中</option>
+      <option value="ja">日</option>
+    </select>
+    <div class="hd-connect" id="connect">
+      <button class="btn ghost" id="connect-btn">
+        <span class="hd-dot" id="connect-dot"></span>
+        <span data-i18n="connect">connect</span>
+        <span id="connect-count">0/4</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="hd-menu" id="connect-menu">
+        <div class="hd-row" data-platform="twitter">
+          <span class="hd-pf">X</span>
+          <span class="hd-st">—</span>
+          <button class="btn small" data-act="oauth" data-platform="twitter" data-i18n="login">login</button>
+          <button class="btn small ghost" data-act="manual" data-platform="twitter" data-i18n="tokens">tokens</button>
+        </div>
+        <div class="hd-row" data-platform="reddit">
+          <span class="hd-pf">Reddit</span>
+          <span class="hd-st">—</span>
+          <button class="btn small" data-act="oauth" data-platform="reddit" data-i18n="login">login</button>
+          <button class="btn small ghost" data-act="manual" data-platform="reddit" data-i18n="tokens">tokens</button>
+        </div>
+        <div class="hd-row" data-platform="linkedin">
+          <span class="hd-pf">LinkedIn</span>
+          <span class="hd-st">—</span>
+          <button class="btn small" data-act="oauth" data-platform="linkedin" data-i18n="login">login</button>
+          <button class="btn small ghost" data-act="manual" data-platform="linkedin" data-i18n="tokens">tokens</button>
+        </div>
+        <div class="hd-row" data-platform="gitmail">
+          <span class="hd-pf">Gitmail</span>
+          <span class="hd-st">—</span>
+          <button class="btn small" data-act="manual" data-platform="gitmail" data-i18n="setup">setup</button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="vm-main">
+  <main class="main">
     {% block main %}{% endblock %}
   </main>
 
-  <div class="vm-toast" id="vm-toast"></div>
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box">
+      <header class="modal-hd">
+        <h3 id="modal-title">connect</h3>
+        <button class="btn small ghost" id="modal-close" data-i18n="close">close</button>
+      </header>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
 
-  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
-  {% block scripts %}{% endblock %}
+  <div class="toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,288 @@
+// Translation table for the dashboard. 4 languages, flat keys.
+window.VM_I18N = {
+  en: {
+    'connect': 'connect',
+    'login': 'login',
+    'tokens': 'tokens',
+    'setup': 'setup',
+    'close': 'close',
+    'cancel': 'cancel',
+    'next': 'next →',
+    'auto': 'auto',
+    'provider': 'provider',
+    'mode': 'mode',
+    'generate': 'generate',
+    'connected': 'connected',
+    'not_set': 'not set',
+
+    'step.project': 'project',
+    'step.generate': 'generate',
+    'step.targets': 'targets',
+    'step.send': 'send',
+
+    'project.name': 'name',
+    'project.url': 'github URL',
+    'project.url.ph': 'https://github.com/you/repo',
+    'project.pitch': 'one-line pitch',
+    'project.pitch.ph': 'cuts cost by 47% in 3 weeks',
+    'project.desc': 'description',
+    'project.desc.ph': "3–5 lines on what your project is and who it's for",
+    'project.desc.required': 'description is required',
+
+    'ch.tw': 'tweet · thread',
+    'ch.rd': 'post',
+    'ch.gm': 'email outreach',
+    'gen.running': 'generating…',
+    'gen.failed': 'generate failed',
+    'gen.no_channels': 'pick at least one channel',
+    'gen.finish_step1': 'finish step 1 first',
+
+    'tg.x_hashtags': 'X · hashtags',
+    'tg.add_hashtag': 'add hashtag',
+    'tg.reddit_subs': 'Reddit · subreddits',
+    'tg.add_subreddit': 'add subreddit (without r/)',
+    'tg.reddit_threads': 'Reddit · threads to comment on',
+    'tg.click_scan': 'click "scan" to fetch',
+    'tg.scan': 'scan',
+    'tg.scanning': 'scanning…',
+    'tg.scan_failed': 'scan failed',
+    'tg.no_threads': 'no recent threads matched',
+    'tg.add_sub_first': 'add a subreddit first',
+    'tg.gitmail_recipients': 'Gitmail · recipients',
+    'tg.max_users': 'max users',
+    'tg.min_stars': 'min stars',
+    'tg.template_only': 'template-only (cheaper)',
+
+    'send.dryrun': "dry-run (don't actually send)",
+    'send.confirm': 'I confirm I want to send under my accounts',
+    'send.go': 'send',
+    'send.real_check': 'Send for real, under your accounts?',
+    'send.no_run': 'no run yet',
+    'send.cancelled': 'cancelled',
+    'send.preview_failed': 'preview failed',
+    'send.failed': 'failed',
+    'send.no_flags': 'no flags',
+    'send.saved': 'saved',
+  },
+
+  ko: {
+    'connect': '연결',
+    'login': '로그인',
+    'tokens': '토큰',
+    'setup': '설정',
+    'close': '닫기',
+    'cancel': '취소',
+    'next': '다음 →',
+    'auto': '자동',
+    'provider': '프로바이더',
+    'mode': '모드',
+    'generate': '생성',
+    'connected': '연결됨',
+    'not_set': '미설정',
+
+    'step.project': '프로젝트',
+    'step.generate': '생성',
+    'step.targets': '타겟',
+    'step.send': '발송',
+
+    'project.name': '이름',
+    'project.url': 'GitHub URL',
+    'project.url.ph': 'https://github.com/you/repo',
+    'project.pitch': '한 줄 요약',
+    'project.pitch.ph': '3주만에 운영 비용을 47% 줄였다',
+    'project.desc': '설명',
+    'project.desc.ph': '3~5줄로 프로젝트가 무엇이고 누구를 위한 것인지',
+    'project.desc.required': '설명을 입력해주세요',
+
+    'ch.tw': '트윗 · 스레드',
+    'ch.rd': '게시글',
+    'ch.gm': '이메일 아웃리치',
+    'gen.running': '생성 중…',
+    'gen.failed': '생성 실패',
+    'gen.no_channels': '채널을 하나 이상 선택하세요',
+    'gen.finish_step1': '먼저 1단계를 완료하세요',
+
+    'tg.x_hashtags': 'X · 해시태그',
+    'tg.add_hashtag': '해시태그 추가',
+    'tg.reddit_subs': 'Reddit · 서브레딧',
+    'tg.add_subreddit': '서브레딧 추가 (r/ 없이)',
+    'tg.reddit_threads': 'Reddit · 댓글 달 스레드',
+    'tg.click_scan': '"스캔" 버튼을 눌러 가져오기',
+    'tg.scan': '스캔',
+    'tg.scanning': '스캔 중…',
+    'tg.scan_failed': '스캔 실패',
+    'tg.no_threads': '관련 스레드를 찾지 못했습니다',
+    'tg.add_sub_first': '서브레딧을 먼저 추가하세요',
+    'tg.gitmail_recipients': 'Gitmail · 수신자',
+    'tg.max_users': '최대 인원',
+    'tg.min_stars': '최소 스타 수',
+    'tg.template_only': '템플릿 전용 (저렴)',
+
+    'send.dryrun': '드라이런 (실제 발송 안 함)',
+    'send.confirm': '내 계정으로 발송하는 것에 동의합니다',
+    'send.go': '발송',
+    'send.real_check': '실제로 발송하시겠습니까?',
+    'send.no_run': '아직 실행되지 않음',
+    'send.cancelled': '취소됨',
+    'send.preview_failed': '미리보기 실패',
+    'send.failed': '실패',
+    'send.no_flags': '플래그 없음',
+    'send.saved': '저장됨',
+  },
+
+  zh: {
+    'connect': '连接',
+    'login': '登录',
+    'tokens': '令牌',
+    'setup': '设置',
+    'close': '关闭',
+    'cancel': '取消',
+    'next': '下一步 →',
+    'auto': '自动',
+    'provider': '提供商',
+    'mode': '模式',
+    'generate': '生成',
+    'connected': '已连接',
+    'not_set': '未设置',
+
+    'step.project': '项目',
+    'step.generate': '生成',
+    'step.targets': '目标',
+    'step.send': '发送',
+
+    'project.name': '名称',
+    'project.url': 'GitHub URL',
+    'project.url.ph': 'https://github.com/you/repo',
+    'project.pitch': '一句话定位',
+    'project.pitch.ph': '三周内把生产账单砍了 47%',
+    'project.desc': '描述',
+    'project.desc.ph': '3-5 行说明项目是什么、给谁用',
+    'project.desc.required': '需要填写描述',
+
+    'ch.tw': '推文 · 串文',
+    'ch.rd': '帖子',
+    'ch.gm': '邮件外联',
+    'gen.running': '生成中…',
+    'gen.failed': '生成失败',
+    'gen.no_channels': '请至少选择一个频道',
+    'gen.finish_step1': '请先完成第 1 步',
+
+    'tg.x_hashtags': 'X · hashtag',
+    'tg.add_hashtag': '添加 hashtag',
+    'tg.reddit_subs': 'Reddit · 子版块',
+    'tg.add_subreddit': '添加子版块（不带 r/）',
+    'tg.reddit_threads': 'Reddit · 可评论的帖子',
+    'tg.click_scan': '点击"扫描"获取',
+    'tg.scan': '扫描',
+    'tg.scanning': '扫描中…',
+    'tg.scan_failed': '扫描失败',
+    'tg.no_threads': '没有找到相关最近帖子',
+    'tg.add_sub_first': '请先添加一个子版块',
+    'tg.gitmail_recipients': 'Gitmail · 收件人',
+    'tg.max_users': '最大人数',
+    'tg.min_stars': '最低星数',
+    'tg.template_only': '仅模板（更便宜）',
+
+    'send.dryrun': '演练（不实际发送）',
+    'send.confirm': '我确认要用我的账号发送',
+    'send.go': '发送',
+    'send.real_check': '确定要真实发送吗？',
+    'send.no_run': '尚未运行',
+    'send.cancelled': '已取消',
+    'send.preview_failed': '预览失败',
+    'send.failed': '失败',
+    'send.no_flags': '无标记',
+    'send.saved': '已保存',
+  },
+
+  ja: {
+    'connect': '接続',
+    'login': 'ログイン',
+    'tokens': 'トークン',
+    'setup': '設定',
+    'close': '閉じる',
+    'cancel': 'キャンセル',
+    'next': '次へ →',
+    'auto': '自動',
+    'provider': 'プロバイダ',
+    'mode': 'モード',
+    'generate': '生成',
+    'connected': '接続済み',
+    'not_set': '未設定',
+
+    'step.project': 'プロジェクト',
+    'step.generate': '生成',
+    'step.targets': 'ターゲット',
+    'step.send': '送信',
+
+    'project.name': '名前',
+    'project.url': 'GitHub URL',
+    'project.url.ph': 'https://github.com/you/repo',
+    'project.pitch': '一言ピッチ',
+    'project.pitch.ph': '3 週間で本番コストを 47% 削減',
+    'project.desc': '説明',
+    'project.desc.ph': '3〜5 行でプロジェクトの内容と対象ユーザー',
+    'project.desc.required': '説明を入力してください',
+
+    'ch.tw': 'ツイート · スレッド',
+    'ch.rd': '投稿',
+    'ch.gm': 'メールアウトリーチ',
+    'gen.running': '生成中…',
+    'gen.failed': '生成失敗',
+    'gen.no_channels': 'チャンネルを 1 つ以上選択してください',
+    'gen.finish_step1': '先にステップ 1 を完了してください',
+
+    'tg.x_hashtags': 'X · ハッシュタグ',
+    'tg.add_hashtag': 'ハッシュタグを追加',
+    'tg.reddit_subs': 'Reddit · サブレディット',
+    'tg.add_subreddit': 'サブレディット追加（r/ なし）',
+    'tg.reddit_threads': 'Reddit · コメントするスレッド',
+    'tg.click_scan': '「スキャン」を押して取得',
+    'tg.scan': 'スキャン',
+    'tg.scanning': 'スキャン中…',
+    'tg.scan_failed': 'スキャン失敗',
+    'tg.no_threads': '該当する最近のスレッドなし',
+    'tg.add_sub_first': '先にサブレディットを追加してください',
+    'tg.gitmail_recipients': 'Gitmail · 受信者',
+    'tg.max_users': '最大人数',
+    'tg.min_stars': '最低スター数',
+    'tg.template_only': 'テンプレのみ（安価）',
+
+    'send.dryrun': 'ドライラン（実送信しない）',
+    'send.confirm': '自分のアカウントで送信することに同意します',
+    'send.go': '送信',
+    'send.real_check': '本当に送信しますか？',
+    'send.no_run': '未実行',
+    'send.cancelled': 'キャンセルされました',
+    'send.preview_failed': 'プレビュー失敗',
+    'send.failed': '失敗',
+    'send.no_flags': 'フラグなし',
+    'send.saved': '保存しました',
+  },
+};
+
+window.VM_T = function (key, lang) {
+  const L = window.VM_I18N[lang] || window.VM_I18N.en;
+  return L[key] !== undefined ? L[key] : (window.VM_I18N.en[key] !== undefined ? window.VM_I18N.en[key] : key);
+};
+
+window.VM_APPLY_I18N = function (lang) {
+  const T = (k) => window.VM_T(k, lang);
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = T(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = T(el.dataset.i18nPlaceholder);
+  });
+  document.documentElement.setAttribute('lang', lang);
+};
+
+window.VM_DETECT_LANG = function () {
+  const stored = localStorage.getItem('vm.lang');
+  if (stored && ['en', 'ko', 'zh', 'ja'].includes(stored)) return stored;
+  const nav = (navigator.language || 'en').toLowerCase();
+  if (nav.startsWith('ko')) return 'ko';
+  if (nav.startsWith('zh')) return 'zh';
+  if (nav.startsWith('ja')) return 'ja';
+  return 'en';
+};

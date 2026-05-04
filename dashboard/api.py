@@ -228,6 +228,170 @@ def _start_gitmail_job(job: GitmailJob) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def _llm_draft_or_fallback(creds, lc, channel, project, keywords, mode, provider,
+                            hashtags=None):
+    """Generate a draft via LLM; if creds missing, return a templated stub."""
+    name = project.get("name") or "my-project"
+    pitch = project.get("pitch") or project.get("desc", "")[:200]
+    sniffer = None
+    try:
+        from sniffer_check import check as sniffer
+    except ImportError:
+        pass
+
+    use_llm = any(creds.get(k) for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"))
+    if use_llm:
+        try:
+            system = (
+                f"Write a {channel} post for an open-source maintainer in {mode} mode. "
+                "No marketing slop. No 'let's dive in', 'leverage', 'supercharge', 'unlock'. "
+                "Concrete, anchored in numbers/names where possible. End with a low-key CTA."
+            )
+            user_prompt = (
+                f"Project: {name}\n"
+                f"Pitch: {pitch}\n"
+                f"Keywords: {', '.join(keywords[:8])}\n\n"
+            )
+            if channel == "twitter":
+                user_prompt += (
+                    f"Output ONLY the tweet body (<=280 chars). For a thread, separate parts "
+                    f"with `---` on its own line. Add 0–2 hashtags from {hashtags or []}."
+                )
+                raw = lc.call_llm(creds, system=system, user=user_prompt,
+                                   provider=provider, max_tokens=600)
+                return _wrap_draft(channel, body=raw, sniffer=sniffer)
+            if channel == "reddit":
+                user_prompt += (
+                    "Output JSON ONLY: {\"title\": \"<=300 chars, no clickbait\", "
+                    "\"body\": \"markdown body, 200-600 words\"}"
+                )
+                raw = lc.call_llm(creds, system=system, user=user_prompt,
+                                   provider=provider, max_tokens=900)
+                d = lc._extract_json(raw) or {}
+                return _wrap_draft(channel, title=d.get("title", name),
+                                   body=d.get("body", raw), sniffer=sniffer)
+            if channel == "gitmail":
+                user_prompt += (
+                    "Output ONLY the email body (90-160 words) as a TEMPLATE. "
+                    "Use `{{login}}` for the recipient handle and `{{starred_repo}}` for the repo "
+                    "they starred. End with a low-pressure CTA — repo link or one-question reply."
+                )
+                raw = lc.call_llm(creds, system=system, user=user_prompt,
+                                   provider=provider, max_tokens=700)
+                return _wrap_draft(channel, body=raw, sniffer=sniffer)
+        except Exception as e:
+            return _stub_draft(channel, name, pitch, keywords, sniffer,
+                                error=str(e))
+    return _stub_draft(channel, name, pitch, keywords, sniffer)
+
+
+def _wrap_draft(channel, body="", title="", sniffer=None):
+    flags = []
+    if sniffer and body:
+        try:
+            platform_map = {"twitter": "x", "reddit": "reddit", "gitmail": "linkedin"}
+            flags = sniffer(body, platform=platform_map.get(channel, "linkedin"))
+        except Exception:
+            flags = []
+    out = {"body": (body or "").strip(), "flags": flags}
+    if title:
+        out["title"] = title.strip()
+    return out
+
+
+def _stub_draft(channel, name, pitch, keywords, sniffer, error=None):
+    kw = ", ".join(keywords[:5]) or "open source"
+    if channel == "twitter":
+        body = (f"shipped {name}: {pitch[:140]}\n\n"
+                 f"if you work with {kw}, would love your read.")
+    elif channel == "reddit":
+        body = (f"# {name}\n\n"
+                 f"{pitch}\n\n"
+                 f"keywords: {kw}\n\n"
+                 f"happy to take feedback — what's the first thing that'd stop you from using this?")
+        return _wrap_draft(channel, title=name, body=body, sniffer=sniffer)
+    else:  # gitmail
+        body = (f"Hi {{{{login}}}},\n\n"
+                 f"Saw you starred {{{{starred_repo}}}}. I built {name} — {pitch}. "
+                 f"Curious if you'd find it useful, or what's missing.\n\n"
+                 f"— ({name})")
+    out = _wrap_draft(channel, body=body, sniffer=sniffer)
+    if error:
+        out["llm_error"] = error
+    return out
+
+
+def _suggest_subreddits(topics, keywords):
+    """Heuristic subreddit suggestions based on keywords."""
+    candidates = []
+    aliases = {
+        "go": ["golang"], "golang": ["golang"],
+        "python": ["Python", "learnpython"],
+        "rust": ["rust"],
+        "javascript": ["javascript"], "typescript": ["typescript"],
+        "kubernetes": ["kubernetes", "devops"],
+        "k8s": ["kubernetes", "devops"],
+        "docker": ["docker", "devops"],
+        "react": ["reactjs"],
+        "nextjs": ["nextjs"],
+        "ai": ["MachineLearning", "LocalLLaMA"],
+        "llm": ["LocalLLaMA", "MachineLearning"],
+        "rag": ["LocalLLaMA"],
+        "cli": ["commandline"],
+        "tui": ["commandline"],
+        "scraper": ["webscraping"],
+        "observability": ["devops", "sre"],
+        "monitoring": ["devops", "sre"],
+    }
+    seen = set()
+    for kw in (topics or []) + (keywords or []):
+        for s in aliases.get(kw.lower(), []):
+            if s not in seen:
+                seen.add(s)
+                candidates.append(s)
+    if not candidates:
+        candidates = ["programming", "opensource", "SideProject"]
+    return candidates[:6]
+
+
+def _fetch_reddit_threads(subs, keywords, per_sub=5):
+    """Hit Reddit's public JSON listing — no auth required for read-only."""
+    import urllib.parse
+    import urllib.request
+    query = " OR ".join(f'"{k}"' if " " in k else k for k in (keywords or [])) or ""
+    out = []
+    for sub in subs:
+        sub = sub.strip().lstrip("r/").lstrip("/")
+        if not sub:
+            continue
+        if query:
+            url = (f"https://www.reddit.com/r/{sub}/search.json?"
+                    f"q={urllib.parse.quote(query)}&restrict_sr=on&sort=new&limit={per_sub}")
+        else:
+            url = f"https://www.reddit.com/r/{sub}/new.json?limit={per_sub}"
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "viralman-dashboard/0.2"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                body = r.read()
+            data = json.loads(body)
+        except Exception:
+            continue
+        for child in (data.get("data") or {}).get("children") or []:
+            d = child.get("data") or {}
+            out.append({
+                "subreddit": d.get("subreddit") or sub,
+                "title": d.get("title") or "",
+                "url": "https://www.reddit.com" + (d.get("permalink") or ""),
+                "score": d.get("score", 0),
+                "comments": d.get("num_comments", 0),
+                "created": d.get("created_utc", 0),
+            })
+    out.sort(key=lambda t: -t.get("score", 0))
+    return out[:15]
+
+
 CREDS_BY_PLATFORM = {
     "twitter": ["TWITTER_API_KEY", "TWITTER_API_SECRET",
                  "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET"],
@@ -416,3 +580,72 @@ def register(app) -> None:
                            "ended_at": j.ended_at}
                           for j in JOBS.values()]
             })
+
+    # ----- generate (LLM-driven drafts for selected channels) -----
+
+    @app.post("/api/generate")
+    def generate():
+        data = request.get_json(silent=True) or {}
+        project = data.get("project") or {}
+        channels = [c for c in (data.get("channels") or []) if c in ("twitter", "reddit", "gitmail")]
+        if not project.get("desc"):
+            return jsonify({"ok": False, "error": "project.desc required"}), 400
+        if not channels:
+            return jsonify({"ok": False, "error": "no channels selected"}), 400
+
+        try:
+            from creds import load as load_creds, CredsError
+            import github_search as gs
+            import llm_compose as lc
+        except ImportError as e:
+            return jsonify({"ok": False, "error": f"import failed: {e}"}), 500
+
+        try:
+            creds = load_creds()
+        except CredsError:
+            creds = {}
+
+        analysis = gs.analyse_project(project["desc"])
+        keywords = analysis.get("keywords", [])
+        topics = analysis.get("topics", [])
+        suggested_hashtags = ["#" + (t.replace("-", "") or t) for t in topics[:6]]
+        suggested_subreddits = _suggest_subreddits(topics, keywords)
+
+        provider = data.get("provider")
+        mode = data.get("mode") or "growth-story"
+        drafts: dict[str, dict] = {}
+
+        if "twitter" in channels:
+            drafts["twitter"] = _llm_draft_or_fallback(
+                creds, lc, "twitter", project, keywords, mode, provider, hashtags=suggested_hashtags[:2],
+            )
+        if "reddit" in channels:
+            drafts["reddit"] = _llm_draft_or_fallback(
+                creds, lc, "reddit", project, keywords, mode, provider,
+            )
+        if "gitmail" in channels:
+            drafts["gitmail"] = _llm_draft_or_fallback(
+                creds, lc, "gitmail", project, keywords, mode, provider,
+            )
+
+        return jsonify({
+            "ok": True,
+            "drafts": drafts,
+            "keywords": keywords,
+            "topics": topics,
+            "suggested_hashtags": suggested_hashtags,
+            "suggested_subreddits": suggested_subreddits,
+        })
+
+    # ----- reddit thread scraping (read-only, no auth needed) -----
+
+    @app.post("/api/scrape/reddit-threads")
+    def scrape_reddit_threads():
+        data = request.get_json(silent=True) or {}
+        subs = data.get("subreddits") or []
+        keywords = data.get("keywords") or []
+        if not subs:
+            return jsonify({"ok": False, "error": "subreddits required"}), 400
+
+        threads = _fetch_reddit_threads(subs[:5], keywords[:3], per_sub=5)
+        return jsonify({"ok": True, "threads": threads})

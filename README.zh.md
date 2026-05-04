@@ -81,6 +81,8 @@ chmod +x ~/.local/bin/viralman
 /viralman-login-gitmail      # 约 5 分钟，GitHub 令牌 + SMTP + 一个 LLM API key
 ```
 
+不想配 API key 也行：装了 **Claude Code**，viralman 会自动检测本地的 `claude` 二进制，把 LLM 调用走它（用你 Claude Max plan 的额度）。dashboard 里把 provider 选成 `claude (Max via CLI)` 即可。
+
 密码不进 LLM 上下文。脚本通过 `read -s` 直接管道写入 `~/.viralman/.env`（`chmod 600`）。
 
 ## 用法

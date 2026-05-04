@@ -104,10 +104,23 @@ Optional: bump the per-minute rate limit (default 30):
 ./scripts/save_creds.py --set SMTP_RATE_PER_MIN=60
 ```
 
-## Step 3 — pick ONE LLM provider
+## Step 3 — pick ONE LLM provider (or skip with Claude Code)
 
 The user only needs one of the three. If they already use Claude Code with an
 Anthropic key, that's the easy choice.
+
+**Alternative — Claude Max via Claude Code CLI**: if the user has the
+`claude` binary on PATH (Claude Code is installed), viralman can route LLM
+calls through it directly — no API key needed, the user's logged-in
+Anthropic account (Max plan quota) is used. The dashboard auto-detects this
+and exposes provider `claude-cli` / "claude (Max via CLI)" in the project
+block. Verify with:
+
+```bash
+which claude && claude --version
+```
+
+If both succeed, the user can skip the API-key step entirely.
 
 ### Claude (recommended)
 

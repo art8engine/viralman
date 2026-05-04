@@ -78,6 +78,8 @@ chmod +x ~/.local/bin/viralman
 /viralman-login-gitmail      # ~5 min, GitHub token + SMTP + one LLM API key
 ```
 
+Or skip the API key: if you have **Claude Code** installed, viralman auto-detects the local `claude` binary and routes LLM calls through it (your Claude Max quota applies). Pick provider `claude (Max via CLI)` in the dashboard.
+
 Secrets stay out of the LLM context — skills pipe them via `read -s` into `~/.viralman/.env` (`chmod 600`).
 
 ## Usage

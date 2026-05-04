@@ -81,6 +81,8 @@ chmod +x ~/.local/bin/viralman
 /viralman-login-gitmail      # 약 5분, GitHub 토큰 + SMTP + LLM API 키 1개
 ```
 
+API 키 없이 가도 된다: **Claude Code**가 깔려 있으면 viralman이 로컬 `claude` 바이너리를 자동으로 감지해 LLM 호출을 그쪽으로 위임한다 (Claude Max plan quota 그대로). 대시보드에서 provider를 `claude (Max via CLI)`로 고르면 끝.
+
 비밀값은 LLM 컨텍스트에 안 들어간다. `read -s`로 직접 `~/.viralman/.env` (mode 600)에 저장.
 
 ## 사용법

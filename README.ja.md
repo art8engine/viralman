@@ -81,6 +81,8 @@ chmod +x ~/.local/bin/viralman
 /viralman-login-gitmail      # 約 5 分、GitHub トークン + SMTP + LLM API キー 1 つ
 ```
 
+API キーなしでも動く: **Claude Code** が入っていれば viralman がローカルの `claude` バイナリを自動検出し、LLM 呼び出しをそちら経由にする (Claude Max plan のクォータがそのまま使える)。ダッシュボードで provider を `claude (Max via CLI)` に。
+
 秘密値は LLM コンテキストに入らない。`read -s` で直接 `~/.viralman/.env`（`chmod 600`）へ。
 
 ## 使い方

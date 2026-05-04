@@ -73,6 +73,45 @@ window.VM_I18N = {
     'step.recipients': 'recipients',
     'step.compose': 'compose',
     'step.send': 'send',
+
+    'nav.setup': 'setup',
+
+    'setup.title': 'setup guide',
+    'setup.intro': 'save credentials once. they live in ~/.viralman/.env (chmod 600). never logged to chat.',
+    'setup.redirect_uri': 'redirect URI to register',
+    'setup.save': 'save',
+
+    'setup.tw.h2': 'Twitter / X',
+    'setup.tw.steps': '<li>open <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a> (logged into the account viralman should post from).</li><li>create a new project + app. App name must be globally unique on X (try <code>viralman-&lt;your-handle&gt;</code>).</li><li>"User authentication settings" → set up. <strong>App permissions: Read and write</strong>. Type: Web App. Callback URI: the redirect above. Website: any valid URL.</li><li>"Keys and tokens" tab. Save the secrets below. <strong>Regenerate the Access Token AFTER setting Read+Write</strong> — otherwise tokens are read-only.</li>',
+    'setup.tw.oauth2.h3': "OAuth 2.0 (recommended — used by the dashboard's login button)",
+    'setup.tw.oauth2.note': 'Save these two from the "OAuth 2.0 Client ID and Client Secret" section:',
+    'setup.tw.legacy.h3': 'OAuth 1.0a (legacy, used by post_twitter.py)',
+    'setup.tw.legacy.note': 'Optional. Only needed if you prefer the legacy posting path or want threads via tweepy.',
+
+    'setup.rd.h2': 'Reddit',
+    'setup.rd.steps': '<li>open <a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a>.</li><li>"create another app" at the bottom.</li><li>name: <code>viralman</code>. type: <strong>web app</strong> (for OAuth) <em>or</em> <strong>script</strong> (for legacy username+password). redirect URI: the one above.</li><li>copy the short string under the app name (= client id) and the "secret" field.</li><li>2FA on Reddit blocks PRAW password auth (script-app path). Use OAuth or a dedicated posting account.</li>',
+    'setup.rd.web.h3': 'OAuth web-app (recommended)',
+    'setup.rd.script.h3': 'Script-app (legacy username + password)',
+
+    'setup.li.h2': 'LinkedIn',
+    'setup.li.steps': '<li>open <a href="https://www.linkedin.com/developers/apps" target="_blank">linkedin.com/developers/apps</a>.</li><li>create a new app. you will need a Page to associate it with — any of yours works.</li><li>"Auth" tab → add the redirect URL above.</li><li>"Products" tab → request access to <strong>Sign In with LinkedIn using OpenID Connect</strong> and <strong>Share on LinkedIn</strong>. Approval is automatic for personal use.</li><li>"Auth" tab → copy Client ID and Client Secret.</li><li>Tokens expire after 60 days; the dashboard tells you when to re-login.</li>',
+
+    'setup.gm.h2': 'Gitmail — SMTP + GitHub + LLM provider',
+    'setup.gm.intro': 'Three credential bundles. Save whichever ones apply.',
+    'setup.gm.gh.h3': '1. GitHub token (raises the API rate limit from 60 → 5000/hour)',
+    'setup.gm.gh.steps': '<li>open <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a>.</li><li>"Generate new token" → fine-grained.</li><li>name: <code>viralman-gitmail</code>. expiration: anything (90 days is fine).</li><li>repository access: <strong>Public Repositories (read-only)</strong>. permissions: defaults are enough.</li><li>copy and paste below.</li>',
+    'setup.gm.smtp.h3': '2. SMTP — Gmail example',
+    'setup.gm.smtp.steps': '<li>open <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> (2FA must be on).</li><li>create a new app password named <code>viralman</code>. copy the 16-char password.</li><li>fields below: host <code>smtp.gmail.com</code>, port <code>587</code>, security <code>starttls</code>. user = your Gmail address. password = the 16-char one.</li><li>Gmail caps at ~500 emails/day per account. For larger sends use SendGrid / Mailgun / Amazon SES.</li>',
+    'setup.gm.llm.h3': '3. LLM API key (pick ONE)',
+    'setup.gm.llm.note': 'Or skip this entirely and use Claude Max via the local <code>claude</code> binary — see the note at the bottom of this page.',
+
+    'setup.cmax.note': 'Using <strong>Claude Max</strong>? You do not set it up here. If <code>claude</code> (Claude Code) is on your PATH, just pick provider <strong>"claude (Max via CLI)"</strong> in the project block on any page. The dashboard auto-detects the binary; no API key needed.',
+
+    'pstatus.auto': 'auto-detect — uses the first available provider',
+    'pstatus.cli_ok': '✓ Max via CLI ready',
+    'pstatus.cli_missing': '✗ install Claude Code to use Max plan',
+    'pstatus.key_ok': '✓ key saved',
+    'pstatus.key_missing': '✗ save key in setup',
   },
 
   ko: {
@@ -148,6 +187,45 @@ window.VM_I18N = {
     'step.recipients': '수신자',
     'step.compose': '작성',
     'step.send': '발송',
+
+    'nav.setup': '설정',
+
+    'setup.title': '설정 가이드',
+    'setup.intro': '한 번만 저장하면 끝. 자격증명은 ~/.viralman/.env (chmod 600)에 저장된다. 채팅에 절대 노출되지 않는다.',
+    'setup.redirect_uri': '등록할 redirect URI',
+    'setup.save': '저장',
+
+    'setup.tw.h2': 'Twitter / X',
+    'setup.tw.steps': '<li><a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a>를 viralman이 게시할 계정으로 로그인해서 연다.</li><li>새 project + app 생성. App 이름은 X 전체에서 unique해야 한다 (<code>viralman-&lt;핸들&gt;</code> 추천).</li><li>"User authentication settings" → set up. <strong>App permissions: Read and write</strong>. Type: Web App. Callback URI: 위의 redirect URI. Website: 아무 유효한 URL.</li><li>"Keys and tokens" 탭에서 아래 값들을 받는다. <strong>Read+Write로 설정한 후에 Access Token을 다시 발급</strong>해야 한다 — 안 그러면 토큰이 읽기 전용이다.</li>',
+    'setup.tw.oauth2.h3': 'OAuth 2.0 (대시보드 login 버튼이 쓰는 방식, 권장)',
+    'setup.tw.oauth2.note': '"OAuth 2.0 Client ID and Client Secret" 섹션의 두 값을 저장한다:',
+    'setup.tw.legacy.h3': 'OAuth 1.0a (post_twitter.py가 쓰는 레거시)',
+    'setup.tw.legacy.note': '선택. 레거시 게시 경로를 쓰거나 tweepy로 스레드를 보내려면 필요.',
+
+    'setup.rd.h2': 'Reddit',
+    'setup.rd.steps': '<li><a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a>를 연다.</li><li>맨 아래 "create another app" 클릭.</li><li>name: <code>viralman</code>. type: <strong>web app</strong>(OAuth용) 또는 <strong>script</strong>(레거시 username+password용). redirect URI: 위의 값.</li><li>앱 이름 아래의 짧은 문자열(= client id)과 "secret" 필드를 복사한다.</li><li>Reddit 2FA가 켜져 있으면 PRAW의 password auth(script-app)는 막힌다. OAuth를 쓰거나 게시 전용 별도 계정을 쓴다.</li>',
+    'setup.rd.web.h3': 'OAuth web-app (권장)',
+    'setup.rd.script.h3': 'Script-app (레거시 username + password)',
+
+    'setup.li.h2': 'LinkedIn',
+    'setup.li.steps': '<li><a href="https://www.linkedin.com/developers/apps" target="_blank">linkedin.com/developers/apps</a>를 연다.</li><li>새 app 생성. Page 하나에 연결해야 한다 — 본인 Page 아무거나 OK.</li><li>"Auth" 탭에서 위의 redirect URL을 추가한다.</li><li>"Products" 탭에서 <strong>Sign In with LinkedIn using OpenID Connect</strong>와 <strong>Share on LinkedIn</strong> 권한을 요청한다. 개인 사용은 자동 승인.</li><li>"Auth" 탭에서 Client ID와 Client Secret을 복사한다.</li><li>토큰은 60일이면 만료된다. 만료되면 대시보드가 재로그인하라고 알린다.</li>',
+
+    'setup.gm.h2': 'Gitmail — SMTP + GitHub + LLM 프로바이더',
+    'setup.gm.intro': '세 묶음. 필요한 것만 저장하면 된다.',
+    'setup.gm.gh.h3': '1. GitHub 토큰 (API rate limit을 60 → 5000/시간으로 끌어올린다)',
+    'setup.gm.gh.steps': '<li><a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a>를 연다.</li><li>"Generate new token" → fine-grained.</li><li>이름: <code>viralman-gitmail</code>. 만료: 아무거나 (90일 적당).</li><li>repository access: <strong>Public Repositories (read-only)</strong>. 권한은 기본값으로 충분.</li><li>복사해서 아래 칸에 붙여넣기.</li>',
+    'setup.gm.smtp.h3': '2. SMTP — Gmail 예시',
+    'setup.gm.smtp.steps': '<li><a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>를 연다 (2FA 켜야 한다).</li><li><code>viralman</code> 이름으로 새 앱 비밀번호 생성. 16자 비밀번호 복사.</li><li>아래 입력: host <code>smtp.gmail.com</code>, port <code>587</code>, security <code>starttls</code>. user = 본인 Gmail. password = 위 16자.</li><li>Gmail은 계정당 하루 ~500통 제한. 더 큰 발송은 SendGrid / Mailgun / Amazon SES.</li>',
+    'setup.gm.llm.h3': '3. LLM API 키 (1개만 고르면 됨)',
+    'setup.gm.llm.note': '아니면 이 단계 자체를 건너뛰고 Claude Max(로컬 <code>claude</code> 바이너리)를 써도 된다 — 페이지 맨 아래 안내 참조.',
+
+    'setup.cmax.note': '<strong>Claude Max</strong>를 쓴다면 여기서 설정하지 않는다. <code>claude</code>(Claude Code)가 PATH에 있으면 어떤 페이지에서든 project 블록의 provider를 <strong>"claude (Max via CLI)"</strong>로 고르면 된다. 대시보드가 바이너리를 자동 감지한다. API 키 불필요.',
+
+    'pstatus.auto': '자동 — 사용 가능한 첫 번째 provider 사용',
+    'pstatus.cli_ok': '✓ Max via CLI 준비됨',
+    'pstatus.cli_missing': '✗ Max plan을 쓰려면 Claude Code 설치 필요',
+    'pstatus.key_ok': '✓ 키 저장됨',
+    'pstatus.key_missing': '✗ setup에서 키 저장 필요',
   },
 
   zh: {
@@ -223,6 +301,45 @@ window.VM_I18N = {
     'step.recipients': '收件人',
     'step.compose': '撰写',
     'step.send': '发送',
+
+    'nav.setup': '设置',
+
+    'setup.title': '设置指南',
+    'setup.intro': '一次性保存。凭证存在 ~/.viralman/.env (chmod 600)，永远不会进聊天上下文。',
+    'setup.redirect_uri': '需要注册的 redirect URI',
+    'setup.save': '保存',
+
+    'setup.tw.h2': 'Twitter / X',
+    'setup.tw.steps': '<li>用要发推的账号登录后打开 <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a>。</li><li>新建 project + app。App 名字在 X 全网必须唯一（建议 <code>viralman-&lt;handle&gt;</code>）。</li><li>"User authentication settings" → set up。<strong>App permissions: Read and write</strong>。Type: Web App。Callback URI: 上面的 redirect URI。Website: 任意有效 URL。</li><li>"Keys and tokens" 选项卡，保存下面的密钥。<strong>设成 Read+Write 之后再重新生成 Access Token</strong>，否则 token 只能读。</li>',
+    'setup.tw.oauth2.h3': 'OAuth 2.0（dashboard 的 login 按钮用这个，推荐）',
+    'setup.tw.oauth2.note': '保存 "OAuth 2.0 Client ID and Client Secret" 这一组：',
+    'setup.tw.legacy.h3': 'OAuth 1.0a（post_twitter.py 用的旧路径）',
+    'setup.tw.legacy.note': '可选。要用旧的发布方式，或者用 tweepy 发串文才需要。',
+
+    'setup.rd.h2': 'Reddit',
+    'setup.rd.steps': '<li>打开 <a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a>。</li><li>页面底部点 "create another app"。</li><li>name: <code>viralman</code>。type: <strong>web app</strong>（用于 OAuth）或 <strong>script</strong>（用于旧的 username+password）。redirect URI: 上面那个。</li><li>复制 app 名字下面那串短字符串（= client id）和 "secret" 字段。</li><li>Reddit 开了 2FA 会让 PRAW 的 password 登录失败（script-app 路径）。要么走 OAuth，要么用一个专门发帖的小号。</li>',
+    'setup.rd.web.h3': 'OAuth web-app（推荐）',
+    'setup.rd.script.h3': 'Script-app（旧 username + password）',
+
+    'setup.li.h2': 'LinkedIn',
+    'setup.li.steps': '<li>打开 <a href="https://www.linkedin.com/developers/apps" target="_blank">linkedin.com/developers/apps</a>。</li><li>新建 app。需要绑一个 Page，自己的任意 Page 都行。</li><li>"Auth" 选项卡 → 添加上面的 redirect URL。</li><li>"Products" 选项卡 → 申请 <strong>Sign In with LinkedIn using OpenID Connect</strong> 和 <strong>Share on LinkedIn</strong>。个人用自动通过。</li><li>"Auth" 选项卡 → 复制 Client ID 和 Client Secret。</li><li>Token 60 天过期；过期了 dashboard 会提示重新登录。</li>',
+
+    'setup.gm.h2': 'Gitmail — SMTP + GitHub + LLM',
+    'setup.gm.intro': '三组凭证。按需保存。',
+    'setup.gm.gh.h3': '1. GitHub token（把 API 速率限制从 60 → 5000/小时）',
+    'setup.gm.gh.steps': '<li>打开 <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a>。</li><li>"Generate new token" → fine-grained。</li><li>name: <code>viralman-gitmail</code>。过期: 随便 (90 天合适)。</li><li>repository access: <strong>Public Repositories (read-only)</strong>。权限: 默认就够。</li><li>复制粘贴到下面。</li>',
+    'setup.gm.smtp.h3': '2. SMTP — Gmail 示例',
+    'setup.gm.smtp.steps': '<li>打开 <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>（必须开 2FA）。</li><li>新建一个名为 <code>viralman</code> 的应用密码。复制 16 位密码。</li><li>下面填: host <code>smtp.gmail.com</code>，port <code>587</code>，security <code>starttls</code>。user = 你的 Gmail，password = 那 16 位。</li><li>Gmail 每个账号每天 ~500 封限制。要发更多用 SendGrid / Mailgun / Amazon SES。</li>',
+    'setup.gm.llm.h3': '3. LLM API key（任选一个）',
+    'setup.gm.llm.note': '或者完全跳过这一步，用本地 <code>claude</code> 二进制（Claude Max）— 见页面底部说明。',
+
+    'setup.cmax.note': '想用 <strong>Claude Max</strong>？这里不用配。只要 <code>claude</code>（Claude Code）在 PATH 上，在任何页面的 project 区块把 provider 选成 <strong>"claude (Max via CLI)"</strong> 即可。dashboard 自动检测，不需要 API key。',
+
+    'pstatus.auto': '自动 — 使用第一个可用 provider',
+    'pstatus.cli_ok': '✓ Max via CLI 就绪',
+    'pstatus.cli_missing': '✗ 要用 Max plan 请安装 Claude Code',
+    'pstatus.key_ok': '✓ 已保存 key',
+    'pstatus.key_missing': '✗ 在 setup 里保存 key',
   },
 
   ja: {
@@ -298,6 +415,45 @@ window.VM_I18N = {
     'step.recipients': '受信者',
     'step.compose': '作成',
     'step.send': '送信',
+
+    'nav.setup': '設定',
+
+    'setup.title': 'セットアップ手順',
+    'setup.intro': '一度だけ保存すれば終わり。認証情報は ~/.viralman/.env (chmod 600) に保存される。チャットには絶対に出ない。',
+    'setup.redirect_uri': '登録する redirect URI',
+    'setup.save': '保存',
+
+    'setup.tw.h2': 'Twitter / X',
+    'setup.tw.steps': '<li>viralman に投稿させたいアカウントでログインして <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">developer.twitter.com</a> を開く。</li><li>新しい project + app を作成。App 名は X 全体でユニーク (<code>viralman-&lt;handle&gt;</code> がおすすめ)。</li><li>「User authentication settings」→ set up。<strong>App permissions: Read and write</strong>。Type: Web App。Callback URI: 上の redirect URI。Website: 有効な URL なら何でも。</li><li>「Keys and tokens」タブで下のシークレットを保存。<strong>Read+Write に設定後、Access Token を再発行</strong>すること。さもないと読み取り専用になる。</li>',
+    'setup.tw.oauth2.h3': 'OAuth 2.0 (ダッシュボードの login ボタンが使う方式、推奨)',
+    'setup.tw.oauth2.note': '「OAuth 2.0 Client ID and Client Secret」セクションの 2 つを保存:',
+    'setup.tw.legacy.h3': 'OAuth 1.0a (post_twitter.py が使うレガシー)',
+    'setup.tw.legacy.note': '任意。レガシーの投稿経路を使う、または tweepy でスレッドを送りたい場合のみ。',
+
+    'setup.rd.h2': 'Reddit',
+    'setup.rd.steps': '<li><a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a> を開く。</li><li>ページ下の「create another app」をクリック。</li><li>name: <code>viralman</code>。type: <strong>web app</strong>（OAuth 用）または <strong>script</strong>（レガシー username+password 用）。redirect URI: 上の値。</li><li>app 名の下の短い文字列 (= client id) と「secret」フィールドをコピー。</li><li>Reddit の 2FA は PRAW の password 認証 (script-app) をブロックする。OAuth を使うか、投稿専用の別アカウントを使う。</li>',
+    'setup.rd.web.h3': 'OAuth web-app (推奨)',
+    'setup.rd.script.h3': 'Script-app (レガシー username + password)',
+
+    'setup.li.h2': 'LinkedIn',
+    'setup.li.steps': '<li><a href="https://www.linkedin.com/developers/apps" target="_blank">linkedin.com/developers/apps</a> を開く。</li><li>新規 app 作成。Page と紐づける必要がある — 自分のどの Page でも OK。</li><li>「Auth」タブ → 上の redirect URL を追加。</li><li>「Products」タブ → <strong>Sign In with LinkedIn using OpenID Connect</strong> と <strong>Share on LinkedIn</strong> を申請。個人利用は自動承認。</li><li>「Auth」タブ → Client ID と Client Secret をコピー。</li><li>トークンは 60 日で失効。失効するとダッシュボードが再ログインを促す。</li>',
+
+    'setup.gm.h2': 'Gitmail — SMTP + GitHub + LLM プロバイダ',
+    'setup.gm.intro': '3 種類の認証情報。必要なものだけ保存すればよい。',
+    'setup.gm.gh.h3': '1. GitHub トークン (API レート制限を 60 → 5000/時間に引き上げる)',
+    'setup.gm.gh.steps': '<li><a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a> を開く。</li><li>「Generate new token」→ fine-grained。</li><li>name: <code>viralman-gitmail</code>。expiration: 何でも (90 日が無難)。</li><li>repository access: <strong>Public Repositories (read-only)</strong>。permissions はデフォルトで十分。</li><li>コピーして下のフィールドに貼る。</li>',
+    'setup.gm.smtp.h3': '2. SMTP — Gmail の例',
+    'setup.gm.smtp.steps': '<li><a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a> を開く (2FA を有効にしておく)。</li><li><code>viralman</code> という名前で新しい app password を作成。16 桁のパスワードをコピー。</li><li>下のフィールド: host <code>smtp.gmail.com</code>、port <code>587</code>、security <code>starttls</code>。user = Gmail アドレス。password = その 16 桁。</li><li>Gmail はアカウントあたり 1 日 ~500 通の制限。それ以上は SendGrid / Mailgun / Amazon SES。</li>',
+    'setup.gm.llm.h3': '3. LLM API キー (どれか 1 つ)',
+    'setup.gm.llm.note': 'または完全にスキップして、ローカルの <code>claude</code> バイナリ (Claude Max) を使う — このページ最下部のメモ参照。',
+
+    'setup.cmax.note': '<strong>Claude Max</strong> を使う？ここでは設定しない。<code>claude</code> (Claude Code) が PATH にあれば、どのページでも project ブロックの provider を <strong>「claude (Max via CLI)」</strong>に選ぶだけ。ダッシュボードが自動検出する。API キー不要。',
+
+    'pstatus.auto': '自動 — 使える最初のプロバイダを使う',
+    'pstatus.cli_ok': '✓ Max via CLI 利用可',
+    'pstatus.cli_missing': '✗ Max plan を使うには Claude Code をインストール',
+    'pstatus.key_ok': '✓ キー保存済み',
+    'pstatus.key_missing': '✗ setup でキーを保存',
   },
 };
 
@@ -309,6 +465,7 @@ window.VM_T = function (key, lang) {
 window.VM_APPLY_I18N = function (lang) {
   const T = (k) => window.VM_T(k, lang);
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = T(el.dataset.i18nHtml); });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = T(el.dataset.i18nPlaceholder); });
   document.documentElement.setAttribute('lang', lang);
 };

@@ -200,18 +200,8 @@
   async function refreshConnectStatus() {
     const r = await fetchJSON('/api/creds/status');
     if (!r.ok || !r.data) return;
-    // Claude Max (CLI) inline indicator next to provider select
-    const cliEl = document.getElementById('cli-status');
-    if (cliEl) {
-      const cli = r.data.claude_cli || {};
-      if (cli.available) {
-        cliEl.textContent = `✓ Max via CLI ready${cli.version ? ' (' + cli.version + ')' : ''}`;
-        cliEl.className = 'cli-status ok';
-      } else {
-        cliEl.textContent = '✗ install Claude Code to use Max plan';
-        cliEl.className = 'cli-status bad';
-      }
-    }
+    window.VM_LAST_STATUS = r.data;
+    refreshProviderStatus();
     let configured = 0;
     for (const p of PLATFORMS) {
       const row = document.querySelector(`.hd-row[data-platform="${p}"] .hd-st`);
@@ -235,6 +225,33 @@
     if (dot) dot.className = 'hd-dot ' + (configured === 4 ? 'ok' : configured ? 'partial' : '');
   }
 
+  // ───── Provider inline status ─────
+  function refreshProviderStatus() {
+    const sel = document.getElementById('p-provider');
+    const out = document.getElementById('cli-status');
+    if (!sel || !out || !window.VM_LAST_STATUS) return;
+    const status = window.VM_LAST_STATUS;
+    const v = sel.value;
+    let cls = '', text = '';
+    if (v === '') {
+      text = T('pstatus.auto'); cls = '';
+    } else if (v === 'claude-cli') {
+      const cli = status.claude_cli || {};
+      if (cli.available) {
+        text = `${T('pstatus.cli_ok')}${cli.version ? ' (' + cli.version + ')' : ''}`;
+        cls = 'ok';
+      } else {
+        text = T('pstatus.cli_missing'); cls = 'bad';
+      }
+    } else {
+      const ok = (status[v] || {}).configured;
+      text = ok ? T('pstatus.key_ok') : T('pstatus.key_missing');
+      cls = ok ? 'ok' : 'bad';
+    }
+    out.textContent = text;
+    out.className = 'cli-status ' + cls;
+  }
+
   // ───── Language switcher ─────
   const langPick = document.getElementById('lang-pick');
   if (langPick) {
@@ -244,6 +261,7 @@
       localStorage.setItem('vm.lang', LANG);
       window.VM_APPLY_I18N(LANG);
       refreshConnectStatus();
+      refreshProviderStatus();
     });
   }
 
@@ -263,5 +281,7 @@
     bindProject();
     bindConnect();
     refreshConnectStatus();
+    const sel = document.getElementById('p-provider');
+    if (sel) sel.addEventListener('change', refreshProviderStatus);
   });
 })();

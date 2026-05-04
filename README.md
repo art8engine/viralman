@@ -18,7 +18,7 @@
 
 ---
 
-Local dashboard + multi-platform poster + targeted outreach for open-source maintainers. One project description in, platform-tuned drafts and recipient lists out. Posts go live only after you confirm.
+viralman takes your project description and drafts Twitter/X posts, Reddit threads, and cold emails to developers who starred similar repos on GitHub — then waits for you to say go. Works for anything you built: OSS, side project, indie tool.
 
 ```bash
 viralman                 # opens http://localhost:8765

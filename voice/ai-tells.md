@@ -135,3 +135,24 @@ Don't go too hard the other way:
 - Don't make every sentence a fragment to defeat the monotony check. Vary toward natural distribution, not toward chaos.
 
 When in doubt, the texture target is the platform's reference corpus in `voice/reference-corpus/`.
+
+---
+
+## Korean (한국어)
+
+The same kinds of tells show up in Korean — usually as stiff, translated-sounding phrasings that no real Korean dev tweet would use. Flag any of these:
+
+- `오늘날의 빠르게 변화하는` — direct calque of "in today's fast-paced", rarely written by humans.
+- `~을(를) 활용하여` / `~를 활용한` / `활용하여` / `활용한` — translated "leverage"; native Korean prefers `~을 써서` or `~으로`.
+- `~에 대해 깊이 알아보겠습니다` / `자세히 알아보겠습니다` — calque of "let's dive deep into"; reads as a textbook intro.
+- `혁신적인` / `혁명적인` as filler adjective — when used to describe ordinary tools, it's marketing copy.
+- `최첨단` — calque of "cutting-edge"; banned unless quoting a vendor.
+- `~을 통해 ~할 수 있습니다` — overused construction in AI-translated documentation; replace with a direct verb.
+- `결론적으로` / `결국에는` / `마지막으로` / `요컨대` at the start of the closing sentence — Korean closing-moralizer tic.
+- `~이 아니라 ~입니다` / `~가 아니라 ~입니다` — Korean equivalent of "It's not just X — it's Y", banned outright.
+- `여러분` + 호소조 (e.g., `여러분, 함께 ~합시다`) — LinkedIn-evangelist tone; rare in casual Korean writing.
+- `~의 시너지` / `~의 패러다임` — loanword filler; sounds like a corporate slide deck.
+- `놀라운` / `놀라운 결과` — calque of "remarkable" / "remarkable results", typically empty.
+- `깊이 있는 통찰` / `심도 있는 분석` — translated "deep insights / in-depth analysis", AI-marketing register.
+
+When flagged, rewrite in concrete Korean: name the tool, the number, the moment. Same anchor rules as the English sections apply.

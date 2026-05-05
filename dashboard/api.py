@@ -118,6 +118,89 @@ def record_unsubscribe(token: str) -> None:
         pass
 
 
+def _unsubscribe_log_path() -> Path:
+    """Path to the persisted token-only unsubscribe log."""
+    override = os.environ.get("VIRALMAN_UNSUB_LOG")
+    if override:
+        return Path(override)
+    return REPO_ROOT / ".viralman_unsubscribes.jsonl"
+
+
+def _token_email_map_path() -> Path:
+    """Path to the token->email map (append-only jsonl).
+
+    Tests can override via the VIRALMAN_UNSUB_TOKEN_LOG env var.
+    """
+    override = os.environ.get("VIRALMAN_UNSUB_TOKEN_LOG")
+    if override:
+        return Path(override)
+    return REPO_ROOT / ".viralman_unsub_tokens.jsonl"
+
+
+def _record_token_email(token: str, email: str) -> None:
+    """Append a {token, email} row to the token-email map for later lookup."""
+    if not token or not email:
+        return
+    path = _token_email_map_path()
+    try:
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"ts": time.time(), "token": token,
+                                 "email": email}) + "\n")
+    except Exception:
+        pass
+
+
+def _load_unsubscribed_emails() -> set[str]:
+    """Resolve unsubscribed *emails* by joining the unsubscribe log with the
+    token->email map. In-memory UNSUBSCRIBES tokens are also included.
+
+    Missing files are treated as empty (backward-compat).
+    """
+    unsub_tokens: set[str] = set(UNSUBSCRIBES.keys())
+    unsub_log = _unsubscribe_log_path()
+    if unsub_log.exists():
+        try:
+            with unsub_log.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    tok = row.get("token")
+                    if tok:
+                        unsub_tokens.add(tok)
+        except Exception:
+            pass
+
+    if not unsub_tokens:
+        return set()
+
+    token_to_email: Dict[str, str] = {}
+    map_path = _token_email_map_path()
+    if map_path.exists():
+        try:
+            with map_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    tok = row.get("token")
+                    email = row.get("email")
+                    if tok and email:
+                        token_to_email[tok] = email.lower()
+        except Exception:
+            pass
+
+    return {token_to_email[t] for t in unsub_tokens if t in token_to_email}
+
+
 # --------------------------------------------------------------------------- #
 # Subprocess helpers                                                          #
 # --------------------------------------------------------------------------- #
@@ -317,9 +400,13 @@ def _stub_draft(channel, name, pitch, keywords, sniffer, error=None):
         return _wrap_draft(channel, title=name, body=body, sniffer=sniffer)
     else:  # gitmail
         body = (f"Hi {{{{login}}}},\n\n"
-                 f"Saw you starred {{{{starred_repo}}}}. I built {name} — {pitch}. "
-                 f"Curious if you'd find it useful, or what's missing.\n\n"
-                 f"— ({name})")
+                 f"Noticed you starred {{{{starred_repo}}}}. Thought this might be relevant.\n\n"
+                 f"I built {name}: {pitch}. It's open source and I'm still in early feedback mode, "
+                 f"so rough edges are expected. The main use case is {kw}.\n\n"
+                 f"If you get a chance to look, I'd like to know what's missing or broken "
+                 f"for your workflow. A one-line reply is plenty.\n\n"
+                 f"Repo: https://github.com/your-handle/{name}\n\n"
+                 f"- {name}")
     out = _wrap_draft(channel, body=body, sniffer=sniffer)
     if error:
         out["llm_error"] = error
@@ -493,6 +580,8 @@ def _run_send_job(job: "GitmailJob") -> None:
         dry_run = bool(job.args.get("dry_run", True))
         unsubscribe_base = job.args.get("_url_root") or "http://localhost:8765"
 
+        unsubbed = _load_unsubscribed_emails()
+
         def fill(rec: Dict[str, str]) -> str:
             return (body_template
                     .replace("{{login}}", rec.get("login", ""))
@@ -501,21 +590,34 @@ def _run_send_job(job: "GitmailJob") -> None:
         if dry_run:
             job.append({"event": "send_dry_run_start", "count": len(recipients)})
             previews = []
+            skipped = 0
             for r in recipients:
                 if job.status == "cancelled":
                     break
+                email = (r.get("email") or "").lower()
+                if email and email in unsubbed:
+                    skipped += 1
+                    job.append({"event": "send_skip",
+                                 "reason": "unsubscribed",
+                                 "to": r.get("email", "")})
+                    continue
                 body = fill(r)
                 preview = smtp_send.render_preview(
                     creds, to_addr=r["email"], subject=subject, body=body,
                     unsubscribe_base=unsubscribe_base,
                 )
+                tok = preview.get("unsubscribe_token")
+                if tok:
+                    _record_token_email(tok, r["email"])
                 previews.append({**r, "subject": subject, "body": body,
                                   "preview_headers": preview["headers"]})
                 job.append({"event": "send_preview", "to": r["email"],
                              "subject": subject})
-            job.append({"event": "send_dry_run_done", "count": len(previews)})
+            job.append({"event": "send_dry_run_done", "count": len(previews),
+                         "skipped": skipped})
             job.append({"event": "done",
-                         "send": {"sent": 0, "failed": 0, "previews": previews}})
+                         "send": {"sent": 0, "failed": 0, "skipped": skipped,
+                                   "previews": previews}})
             return
 
         try:
@@ -526,12 +628,20 @@ def _run_send_job(job: "GitmailJob") -> None:
 
         sent = 0
         failed = 0
+        skipped = 0
         failures: List[Dict[str, str]] = []
         job.append({"event": "send_start", "count": len(recipients)})
         try:
             for r in recipients:
                 if job.status == "cancelled":
                     break
+                email = (r.get("email") or "").lower()
+                if email and email in unsubbed:
+                    skipped += 1
+                    job.append({"event": "send_skip",
+                                 "reason": "unsubscribed",
+                                 "to": r.get("email", "")})
+                    continue
                 limiter.wait()
                 body = fill(r)
                 try:
@@ -540,6 +650,9 @@ def _run_send_job(job: "GitmailJob") -> None:
                         body=body, unsubscribe_base=unsubscribe_base,
                     )
                     sent += 1
+                    tok = result.get("unsubscribe_token")
+                    if tok:
+                        _record_token_email(tok, r["email"])
                     job.append({"event": "send_ok", "to": r["email"],
                                  "login": r.get("login", ""),
                                  "message_id": result.get("message_id", ""),
@@ -555,10 +668,11 @@ def _run_send_job(job: "GitmailJob") -> None:
                 smtp.quit()
             except Exception:
                 pass
-        job.append({"event": "send_done", "sent": sent, "failed": failed})
+        job.append({"event": "send_done", "sent": sent, "failed": failed,
+                     "skipped": skipped})
         job.append({"event": "done",
                      "send": {"sent": sent, "failed": failed,
-                               "failures": failures}})
+                               "skipped": skipped, "failures": failures}})
     except Exception as e:
         job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
 

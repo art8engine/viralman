@@ -11,12 +11,15 @@ def twitter_intent(text: str) -> str:
 
 
 def reddit_submit(subreddit: str, title: str, body: str) -> str:
+    sub = subreddit.strip().lstrip("/")
+    if sub.lower().startswith("r/"):
+        sub = sub[2:]
     params = {
         "title": title,
         "text": body,
     }
     qs = urllib.parse.urlencode(params)
-    return f"https://www.reddit.com/r/{subreddit}/submit?{qs}"
+    return f"https://www.reddit.com/r/{sub}/submit?{qs}"
 
 
 def linkedin_share(text: str) -> str:

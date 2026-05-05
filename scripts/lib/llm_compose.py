@@ -345,10 +345,23 @@ def compose_email(
     login: str,
     starred_repo: str,
     provider: Optional[str] = None,
+    tone: Optional[str] = None,
+    emphasis: Optional[str] = None,
 ) -> Dict[str, str]:
+    system_prompt = _EMAIL_SYS
+    if tone:
+        system_prompt = (
+            f"{system_prompt}\n\n"
+            f"User-specified tone hint: {tone}. Match this voice while still avoiding AI-tells."
+        )
+    if emphasis:
+        system_prompt = (
+            f"{system_prompt}\n\n"
+            f"Lead with these emphasis points: {emphasis}. The first 1-2 sentences should anchor on this."
+        )
     raw = call_llm(
         creds,
-        system=_EMAIL_SYS,
+        system=system_prompt,
         user=_EMAIL_USER_TMPL.format(
             project_name=project_name,
             project_pitch=project_pitch,

@@ -23,6 +23,9 @@ Usage (CLI):
 
   ./scripts/gitmail.py analyse "..."          # quick analysis only
   ./scripts/gitmail.py recipients "..." --max-users 50    # collect only
+  ./scripts/gitmail.py send-from-recipients \
+      --recipients-file r.json --project-name X \
+      --description "..." --project-url https://...
 
 Exit codes:
   0  success
@@ -74,6 +77,13 @@ def _own_repo_full_name(url: str) -> Optional[str]:
     if len(parts) < 2:
         return None
     return f"{parts[0]}/{parts[1]}"
+
+
+def _split_csv(value: Optional[str]) -> List[str]:
+    """Comma-split a CLI string into a list, trimming empties."""
+    if not value:
+        return []
+    return [p.strip() for p in value.split(",") if p.strip()]
 
 
 def step_analyse(creds: Dict[str, str], description: str,
@@ -187,6 +197,8 @@ def step_compose(
     project_url: str,
     provider: Optional[str],
     template_only: bool = False,
+    tone: Optional[str] = None,
+    emphasis: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """Returns each recipient enriched with subject+body."""
     _emit("compose_start", count=len(recipients), template_only=template_only)
@@ -209,6 +221,8 @@ def step_compose(
                 login=r["login"],
                 starred_repo=r["starred_repo"],
                 provider=provider,
+                tone=tone,
+                emphasis=emphasis,
             )
         except Exception as e:
             _emit("compose_error", login=r["login"], error=str(e))
@@ -296,6 +310,57 @@ def step_send(
 
 
 # --------------------------------------------------------------------------- #
+# Recipients-collection helpers (shared by recipients + run)                  #
+# --------------------------------------------------------------------------- #
+
+
+def _collect_from_seed_repos(
+    creds: Dict[str, str],
+    seed_repos: List[str],
+    *,
+    max_users: int,
+) -> List[Dict[str, str]]:
+    """Skip search; treat the given repos as the seed list directly."""
+    repos = [{"full_name": fn, "stars": 0} for fn in seed_repos]
+    _emit("search_done", count=len(repos),
+          repos=[{"full_name": r["full_name"], "stars": 0} for r in repos],
+          source="seed_repos")
+    return step_recipients(creds, repos, max_users=max_users)
+
+
+def _resolve_targeting(
+    creds: Dict[str, str],
+    args: argparse.Namespace,
+) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Run analyse + search with optional CLI overrides.
+
+    Returns (analysis, repos).
+    Honors --keywords/--topics overrides on top of analyse output.
+    """
+    description = getattr(args, "description", "") or ""
+    if description.strip():
+        analysis = step_analyse(creds, description, provider=args.provider)
+    else:
+        analysis = {"summary": "", "keywords": [], "topics": [],
+                     "value_prop": "", "source": "override"}
+
+    keywords_override = _split_csv(getattr(args, "keywords", None))
+    topics_override = _split_csv(getattr(args, "topics", None))
+    if keywords_override:
+        analysis["keywords"] = keywords_override
+    if topics_override:
+        analysis["topics"] = topics_override
+
+    repos = step_search(
+        creds, analysis,
+        min_stars=args.min_stars,
+        repo_limit=args.repo_limit,
+        own_repo=_own_repo_full_name(getattr(args, "project_url", "") or ""),
+    )
+    return analysis, repos
+
+
+# --------------------------------------------------------------------------- #
 # Top-level run                                                               #
 # --------------------------------------------------------------------------- #
 
@@ -307,28 +372,33 @@ def cmd_run(args: argparse.Namespace) -> int:
         _emit("fatal", reason=str(e))
         return 2
 
-    own_repo = _own_repo_full_name(args.project_url or "")
+    seed_repos = _split_csv(getattr(args, "seed_repos", None))
+    max_users = min(args.max_users, 10000)
 
-    analysis = step_analyse(creds, args.description, provider=args.provider)
+    if seed_repos:
+        analysis: Dict[str, Any] = {"summary": "", "keywords": [],
+                                      "topics": [], "value_prop": "",
+                                      "source": "seed_repos"}
+        if (args.description or "").strip():
+            analysis = step_analyse(creds, args.description,
+                                     provider=args.provider)
+        recipients = _collect_from_seed_repos(creds, seed_repos,
+                                                max_users=max_users)
+        repos_count = len(seed_repos)
+    else:
+        analysis, repos = _resolve_targeting(creds, args)
+        if not repos:
+            _emit("fatal", reason="no similar repos found")
+            return 2
+        recipients = step_recipients(creds, repos, max_users=max_users)
+        repos_count = len(repos)
 
-    pitch = args.pitch or analysis.get("value_prop") or analysis.get("summary") or args.description[:200]
-
-    repos = step_search(
-        creds, analysis,
-        min_stars=args.min_stars,
-        repo_limit=args.repo_limit,
-        own_repo=own_repo,
-    )
-    if not repos:
-        _emit("fatal", reason="no similar repos found")
-        return 2
-
-    recipients = step_recipients(
-        creds, repos, max_users=min(args.max_users, 10000),
-    )
     if not recipients:
         _emit("fatal", reason="no recipients with public emails found")
         return 2
+
+    pitch = (args.pitch or analysis.get("value_prop")
+             or analysis.get("summary") or (args.description or "")[:200])
 
     composed = step_compose(
         creds, recipients,
@@ -337,6 +407,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         project_url=args.project_url or "",
         provider=args.provider,
         template_only=args.template_only,
+        tone=getattr(args, "tone", None),
+        emphasis=getattr(args, "emphasis", None),
     )
 
     result = step_send(
@@ -349,7 +421,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     summary = {
         "project_name": args.project_name,
         "analysis": analysis,
-        "repo_count": len(repos),
+        "repo_count": repos_count,
         "recipient_count": len(recipients),
         "send": result,
     }
@@ -374,22 +446,131 @@ def cmd_recipients(args: argparse.Namespace) -> int:
     except CredsError as e:
         _emit("fatal", reason=str(e))
         return 2
-    analysis = step_analyse(creds, args.description, provider=args.provider)
-    repos = step_search(
-        creds, analysis,
-        min_stars=args.min_stars,
-        repo_limit=args.repo_limit,
-        own_repo=_own_repo_full_name(args.project_url or ""),
-    )
-    recipients = step_recipients(creds, repos,
-                                  max_users=min(args.max_users, 10000))
+
+    seed_repos = _split_csv(getattr(args, "seed_repos", None))
+    max_users = min(args.max_users, 10000)
+
+    if seed_repos:
+        recipients = _collect_from_seed_repos(creds, seed_repos,
+                                                max_users=max_users)
+    else:
+        if not (args.description or "").strip():
+            _emit("fatal",
+                  reason="either --description or --seed-repos is required")
+            return 2
+        _, repos = _resolve_targeting(creds, args)
+        if not repos:
+            _emit("fatal", reason="no similar repos found")
+            return 2
+        recipients = step_recipients(creds, repos, max_users=max_users)
+
     print(json.dumps(recipients, indent=2, ensure_ascii=False))
     return 0
+
+
+def _load_recipients_input(args: argparse.Namespace) -> List[Dict[str, str]]:
+    """Load recipients JSON from --recipients-file or --recipients-stdin."""
+    if getattr(args, "recipients_stdin", None):
+        raw = sys.stdin.read()
+    else:
+        path = Path(args.recipients_file)
+        raw = path.read_text(encoding="utf-8")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"recipients JSON parse error: {e}")
+    if not isinstance(data, list):
+        raise SystemExit("recipients JSON must be a list")
+    return data
+
+
+def cmd_send_from_recipients(args: argparse.Namespace) -> int:
+    try:
+        creds = load_creds()
+    except CredsError as e:
+        _emit("fatal", reason=str(e))
+        return 2
+
+    try:
+        raw_recipients = _load_recipients_input(args)
+    except SystemExit as e:
+        _emit("fatal", reason=str(e))
+        return 2
+
+    recipients: List[Dict[str, str]] = []
+    skipped: List[Dict[str, str]] = []
+    for r in raw_recipients:
+        if not isinstance(r, dict):
+            continue
+        login = (r.get("login") or "").strip()
+        email = (r.get("email") or "").strip()
+        starred_repo = (r.get("starred_repo") or "").strip()
+        if not login or not email or not starred_repo:
+            skipped.append({"login": login, "email": email,
+                            "reason": "missing required field"})
+            continue
+        recipients.append({
+            "login": login,
+            "email": email,
+            "starred_repo": starred_repo,
+            "profile": r.get("profile", ""),
+        })
+
+    if skipped:
+        _emit("recipients_skipped", count=len(skipped), entries=skipped)
+
+    if not recipients:
+        _emit("fatal", reason="no valid recipients in input")
+        return 2
+
+    _emit("recipients_loaded", count=len(recipients))
+
+    pitch = args.pitch or (args.description or "")[:200]
+
+    composed = step_compose(
+        creds, recipients,
+        project_name=args.project_name,
+        project_pitch=pitch,
+        project_url=args.project_url or "",
+        provider=args.provider,
+        template_only=args.template_only,
+        tone=args.tone,
+        emphasis=args.emphasis,
+    )
+
+    result = step_send(
+        creds, composed,
+        unsubscribe_base=args.unsubscribe_base,
+        dry_run=args.dry_run,
+        reply_to=args.reply_to,
+    )
+
+    summary = {
+        "project_name": args.project_name,
+        "recipient_count": len(recipients),
+        "send": result,
+    }
+    _emit("done", **summary)
+    return 0 if result.get("failed", 0) == 0 else 1
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description="gitmail — outreach to stargazers of similar repos")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    def add_targeting(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument("--keywords", default=None,
+                         help="Comma-separated keywords. Overrides analyse output.")
+        sp.add_argument("--topics", default=None,
+                         help="Comma-separated topic slugs. Overrides analyse output.")
+        sp.add_argument("--seed-repos", default=None,
+                         help="Comma-separated owner/repo list. Skips search.")
+
+    def add_compose_voice(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument("--tone", default=None,
+                         help="Free-form tone hint (e.g. 'casual hype, short').")
+        sp.add_argument("--emphasis", default=None,
+                         help="Free-form emphasis points to lead with.")
 
     def add_common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--description", required=True,
@@ -405,6 +586,8 @@ def main() -> int:
 
     run = sub.add_parser("run", help="Full pipeline.")
     add_common(run)
+    add_targeting(run)
+    add_compose_voice(run)
     run.add_argument("--dry-run", action="store_true",
                       help="Render previews instead of actually sending.")
     run.add_argument("--unsubscribe-base", default="http://localhost:8765",
@@ -418,7 +601,37 @@ def main() -> int:
     an.add_argument("--provider", choices=["claude", "openai", "gemini"], default=None)
 
     rec = sub.add_parser("recipients", help="Stop after collecting recipients.")
-    add_common(rec)
+    # recipients allows --description OR --seed-repos. Don't make either required
+    # at argparse level; cmd_recipients validates the combination.
+    rec.add_argument("--description", default="",
+                      help="Free-text description of YOUR project. Required unless "
+                           "--seed-repos is given.")
+    rec.add_argument("--project-name", default="my-project")
+    rec.add_argument("--project-url", default="")
+    rec.add_argument("--pitch", default="")
+    rec.add_argument("--provider", choices=["claude", "openai", "gemini"], default=None)
+    rec.add_argument("--min-stars", type=int, default=200)
+    rec.add_argument("--repo-limit", type=int, default=15)
+    rec.add_argument("--max-users", type=int, default=100)
+    add_targeting(rec)
+
+    sfr = sub.add_parser("send-from-recipients",
+                          help="Compose+send for an already-collected recipients JSON.")
+    sfr.add_argument("--recipients-file", default=None,
+                      help="Path to recipients JSON. Use --recipients-stdin instead "
+                           "to read from stdin.")
+    sfr.add_argument("--recipients-stdin", default=None, nargs="?", const="-",
+                      help="Read recipients JSON from stdin.")
+    sfr.add_argument("--project-name", default="my-project")
+    sfr.add_argument("--description", default="")
+    sfr.add_argument("--project-url", default="")
+    sfr.add_argument("--pitch", default="")
+    sfr.add_argument("--provider", choices=["claude", "openai", "gemini"], default=None)
+    add_compose_voice(sfr)
+    sfr.add_argument("--dry-run", action="store_true")
+    sfr.add_argument("--template-only", action="store_true")
+    sfr.add_argument("--unsubscribe-base", default="http://localhost:8765")
+    sfr.add_argument("--reply-to", default=None)
 
     args = p.parse_args()
     if args.cmd == "run":
@@ -428,6 +641,12 @@ def main() -> int:
         return cmd_analyse(ns)
     if args.cmd == "recipients":
         return cmd_recipients(args)
+    if args.cmd == "send-from-recipients":
+        if not args.recipients_file and not args.recipients_stdin:
+            _emit("fatal",
+                  reason="either --recipients-file or --recipients-stdin is required")
+            return 2
+        return cmd_send_from_recipients(args)
     return 2
 
 

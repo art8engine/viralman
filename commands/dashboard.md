@@ -1,6 +1,6 @@
 ---
 description: Open the local viralman dashboard — three pages (Twitter / Reddit / Gitmail) sharing one project state, with a free-text "what to write" prompt driving per-platform AI drafts, unified top-right login, and a language switcher.
-allowed-tools: Bash(./bin/viralman:*), Bash(./scripts/dashboard.py:*), Bash(viralman:*), Bash(open:*)
+allowed-tools: Bash(./bin/viralman:*), Bash(./scripts/dashboard.py:*), Bash(viralman:*), Bash(open:*), Bash(which:*), Bash(test:*), Bash(git rev-parse:*), Bash(ls:*), Bash(./.venv/bin/pip:*)
 argument-hint: "[--port 8765] [--no-browser] [--host 127.0.0.1]"
 ---
 
@@ -47,23 +47,37 @@ that exactly. Do not pip-install on the user's behalf without consent.
 
 ## What you do when invoked
 
-1. Parse `$ARGUMENTS` for `--port`, `--host`, `--no-browser`. Defaults are
-   `port=8765`, `host=127.0.0.1`, browser auto-opens to `/twitter`.
-2. Start the server in the foreground so the user sees the request log.
-3. Tell the user the URL, the three subpaths, and that Ctrl-C stops the server.
-4. Do NOT post on the user's behalf from inside chat — the dashboard is
-   the surface for that.
+1. **Resolve the binary** — try in this order:
+   a. `which viralman 2>/dev/null` — if it exists, use that.
+   b. `test -x ~/.local/bin/viralman` — if so, use that.
+   c. Find the repo root via `git rev-parse --show-toplevel` (must be a viralman repo — confirm by checking `.claude-plugin/marketplace.json` for `name: viralman`). If found and `<root>/.venv/bin/python` exists, use `<root>/.venv/bin/python <root>/bin/viralman`.
+   d. Else: `~/.claude/plugins/cache/*/viralman/*/.venv/bin/python` — pick the latest.
+   e. **Nothing found** — surface this:
+      ```
+      viralman is not installed yet. I can run `/viralman-install` to bootstrap
+      it (clone repo if needed, create venv, install flask + viralman, drop a
+      shim on PATH). Should I?
+      ```
+      If the user says yes, invoke `/viralman-install` first, then come back to step 1.
 
-## Troubleshooting prompts
+2. **Pre-flight checks** (only after binary is found):
+   - Do `<binary> --help 2>&1 | head -1` and look for `usage:` text. If that fails with `ModuleNotFoundError: No module named 'flask'`, run `<venv>/bin/pip install flask` automatically (no prompt — flask is already declared in pyproject.toml as a runtime dep, so we treat its absence as a recoverable bug).
+   - If `--port` clashes (`OSError: [Errno 48] Address already in use`), suggest the user pass `--port 8766` or higher and stop. Don't auto-pick a free port — the user might already have something on 8765.
 
-- "address already in use" → suggest `--port <next>` (e.g., 8766).
-- "ModuleNotFoundError: flask" → `pip install --user flask`, or set up a venv
-  per the install hint.
-- OAuth login goes nowhere → the user hasn't saved a `CLIENT_ID` /
-  `CLIENT_SECRET` for that platform. Point them at the Connect dropdown's
-  "tokens" modal, which lists the exact fields.
-- Connect counter stuck at 0/4 → no creds saved yet; route to the
-  `/viralman-login-*` skills or the dropdown's per-row buttons.
-- Generate returns a stub (not an LLM-written draft) → no Anthropic / OpenAI /
-  Gemini key saved. Save one via the Gitmail "setup" modal or
-  `/viralman-login-gitmail`.
+3. **Parse `$ARGUMENTS`** for `--port`, `--host`, `--no-browser`. Defaults: `port=8765`, `host=127.0.0.1`, browser auto-opens to `/twitter`.
+
+4. **Start the server** in the foreground so the user sees the request log. Tell them:
+   - The URL (`http://<host>:<port>/twitter`).
+   - The three subpaths (`/twitter`, `/reddit`, `/gitmail`, plus `/setup`).
+   - That Ctrl-C stops the server.
+
+5. **Do NOT post on the user's behalf from inside chat** — the dashboard is the surface for that.
+
+## Troubleshooting prompts (auto-recovery branches)
+
+- `command not found: viralman` → step 1.e (offer `/viralman-install`).
+- `ModuleNotFoundError: flask` → run `<venv>/bin/pip install flask`, retry once.
+- `address already in use` → tell the user `--port 8766`. Don't auto-pick.
+- OAuth login goes nowhere → no `CLIENT_ID` / `CLIENT_SECRET` saved. Route them to `/viralman-setup` (recommended) or the dropdown's "tokens" modal.
+- Connect counter stuck at 0/4 → no creds. Same: `/viralman-setup`.
+- Generate returns a stub (not LLM-written) → no API key saved. `/viralman-setup` → category `gitmail` step 3 (LLM key) — or set up Claude Max via `which claude && claude --version` (skill auto-detects).

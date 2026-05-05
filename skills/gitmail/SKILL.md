@@ -25,6 +25,22 @@ Auto-trigger on:
 - "find users who'd care about my project"
 - "스타게이저에게 이메일 보내줘", "유사 repo 사용자에게 메일 보내줘"
 
+**한국어**:
+- "이 프로젝트 홍보메일 보내줘", "내 OSS 알리는 콜드메일"
+- "GitHub 스타거에게 메일", "비슷한 레포 사용자한테 메일"
+- "이거 바이럴 시켜줘 메일로", "asyncprofiler 별표한 사람한테 보내줘"
+
+**English**:
+- "email people who starred similar repos", "send a launch outreach to <repo> stargazers"
+- "promote my project via cold email", "outreach to github users"
+- "blast a personalized email to relevant developers"
+
+**中文**:
+- "给类似仓库的 stargazer 发邮件", "推广我的项目 邮件"
+
+**日本語**:
+- "似たリポジトリのスターガザーにメール", "プロジェクト を 紹介する メール"
+
 `/gitmail` 으로 진입하면 `commands/gitmail.md` 의 인자 파싱을 먼저 따른다.
 
 ## Required inputs

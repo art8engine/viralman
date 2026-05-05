@@ -15,6 +15,24 @@ Auto-trigger when the user's message contains any of:
 - `바이럴해줘`, `바이럴 해줘`, `홍보글 작성해줘`, `홍보 글 써줘`
 - `make this go viral`, `write a promo post`, `write a launch post`, `post this to reddit/twitter/linkedin`
 
+**한국어**:
+- "이거 트위터에 올려줘 AI 같지 않게", "Reddit 글 써줘 자연스럽게"
+- "X 스레드 만들어줘", "LinkedIn 공지 써줘"
+- "내가 한 거 자랑해줘"
+- "이번 출시 글 써줘"
+
+**English**:
+- "write a launch post for X / Reddit / LinkedIn"
+- "tweet about this", "thread about this"
+- "draft a Reddit post for r/<sub>"
+- "make a non-AI-feeling promo post"
+
+**中文**:
+- "写一条不像 AI 的 推文", "写一篇 reddit 帖子"
+
+**日本語**:
+- "AI っぽくない 投稿 を 書いて", "ローンチ 投稿 を 作って"
+
 If the user typed `/viral`, follow `commands/viral.md` for argument parsing first.
 
 ## Required inputs (gather before drafting)

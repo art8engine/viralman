@@ -20,6 +20,20 @@ channel. Run once per channel you want to activate.
 - "reddit for viralman", "set up reddit for viralman"
 - "linkedin for viralman", "set up linkedin for viralman"
 
+**한국어**:
+- "viralman 자격증명 저장해줘", "API 키 저장", "OAuth 등록"
+- "viralman 키 등록", "twitter 자격증명 저장", "reddit 인증"
+
+**English**:
+- "save my viralman credentials", "register viralman api key"
+- "configure viralman auth", "set up viralman tokens"
+
+**中文**:
+- "保存 viralman 凭证", "配置 viralman 密钥"
+
+**日本語**:
+- "viralman の認証情報を保存", "viralman の API キーを設定"
+
 ## Boundaries (read before starting)
 
 - **Never accept secrets in chat without warning.** Show the warning in Step 1

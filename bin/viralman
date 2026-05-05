@@ -42,11 +42,13 @@ def _install_hint() -> str:
     py = sys.executable or "python3"
     venv_path = Path.cwd() / ".venv"
     return (
-        "viralman dashboard needs Flask. Install it with one of:\n"
-        f"  {py} -m pip install --user flask\n"
-        f"  # or in a venv:\n"
-        f"  python3 -m venv {venv_path} && {venv_path}/bin/pip install flask\n"
-        f"  source {venv_path}/bin/activate && viralman\n"
+        "viralman: flask is not installed in this environment.\n"
+        "  Quick fix: install flask with one of:\n"
+        f"    {py} -m pip install --user flask\n"
+        f"    # or in a venv:\n"
+        f"    python3 -m venv {venv_path} && {venv_path}/bin/pip install flask\n"
+        f"    source {venv_path}/bin/activate && viralman\n"
+        "  Or run: /viralman-install (recommended — handles venv too)\n"
         "Then re-run viralman."
     )
 

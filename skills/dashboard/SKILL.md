@@ -22,6 +22,22 @@ Auto-trigger on:
 - "viralman 켜줘", "viralman 띄워줘", "대시보드 열어줘"
 - bare `viralman` in chat that clearly means "start the app", not the project
 
+**한국어**:
+- "대시보드 띄워줘", "대시보드 켜줘", "대시보드 실행"
+- "viralman 웹 UI 열어줘", "viralman 화면 띄워줘"
+- "로컬 서버 켜줘", "viralman 서버 실행"
+
+**English**:
+- "open the dashboard", "launch viralman dashboard", "fire up the dashboard"
+- "start the viralman web UI", "give me the viralman page"
+- "boot viralman locally"
+
+**中文**:
+- "打开 viralman 面板", "启动 viralman 仪表盘"
+
+**日本語**:
+- "viralman の ダッシュボード を 開いて", "ダッシュボード を 起動"
+
 If the user typed `/dashboard`, follow `commands/dashboard.md` for argument
 parsing.
 
@@ -51,6 +67,19 @@ Header (shared across all 3 pages):
 - **Connect 0/4 ▾** dropdown on the right — the single login surface.
   OAuth (X / Reddit / LinkedIn) plus manual tokens (Gitmail SMTP + LLM key)
   all live there.
+
+## Step 0 — environment check (auto-recovery before anything else)
+
+Before launching, verify viralman is installed and importable. Sequence:
+
+1. Resolve the `viralman` binary using the priority order in `commands/dashboard.md` step 1.
+2. If nothing is found, do NOT attempt to clone or pip-install yourself — invoke `/viralman-install` instead, which is the dedicated bootstrap skill. It is idempotent.
+3. After install (or if already present), confirm the binary's `--help` works without a `ModuleNotFoundError`. If flask is missing, run `<venv>/bin/pip install flask` and retry once. After that retry fails, surface the error.
+
+Why two skills:
+- `/dashboard` is "make the UI run for me, now". It must not become a heavy installer.
+- `/viralman-install` is "from a clean machine, get the package working". It owns clone, venv, and shim.
+- The dashboard skill *invokes* the install skill on cache miss. The user shouldn't need to know the difference.
 
 ## Step 1 — Start the server
 

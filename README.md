@@ -92,6 +92,20 @@ Or skip the API key: if you have **Claude Code** installed, viralman auto-detect
 
 Secrets stay out of the LLM context — skills pipe them via `read -s` into `~/.viralman/.env` (`chmod 600`).
 
+## Just say it (Claude Code agent mode)
+
+You don't have to memorize commands. Inside Claude Code, viralman ships as a plugin with skills that auto-trigger on natural-language intent. Saying any of the following gets the agent to do the right thing:
+
+- *"install viralman"* / *"viralman 깔아줘"* / *"安装 viralman"* / *"viralman をインストール"* → bootstraps the package: clones if needed, creates the venv, installs flask + viralman, drops a `viralman` shim on PATH, verifies the dashboard responds. Idempotent — safe to re-run.
+- *"open the dashboard"* / *"대시보드 띄워줘"* / *"打开面板"* / *"ダッシュボード を 開いて"* → launches `http://localhost:8765`. If viralman isn't bootstrapped yet, the agent runs install first, then the dashboard.
+- *"set up gitmail credentials"* / *"viralman 자격증명 저장해줘"* → drives `/viralman-setup` to save just the channel you need. Plain-text token paste is allowed with a security warning; the recommended path is `read -s` so secrets never enter the chat log.
+- *"email people who starred similar repos"* / *"이 프로젝트 홍보메일 보내줘"* → 5-step interactive gitmail flow: project → tone/emphasis → seed repos or keywords → recipients review → dry-run preview → live send.
+- *"write a launch post for X"* / *"AI 같지 않게 트윗 써줘"* → drafts a non-AI-feeling post via the `viral-writer` agent + `ai-tell-sniffer` review pass.
+
+The agent will ask for missing inputs once, never twice. It will refuse to proceed when something's hard-to-reverse (live send, OAuth save) without your explicit OK.
+
+If you prefer typed commands, every natural-language intent has an explicit slash form — see the Usage section below.
+
 ## Usage
 
 ### Dashboard (recommended)

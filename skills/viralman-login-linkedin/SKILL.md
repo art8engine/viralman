@@ -6,6 +6,8 @@ level: 2
 
 # viralman-login-linkedin
 
+> **권장 진입점**: 새로 시작하시면 `/viralman-setup`을 사용하시는 것이 더 빠릅니다. 한 번에 채널을 고르고 그 채널만 설정합니다. 이 스킬은 특정 채널만 따로 손볼 때 또는 자동화 스크립트에서 호출 시 그대로 동작합니다.
+
 LinkedIn is the most complex of the three platforms because:
 
 1. The app needs a **company/organization page** to be associated with — LinkedIn doesn't allow creating apps under a personal account alone. (You can create a free org page in 5 minutes.)
@@ -14,16 +16,24 @@ LinkedIn is the most complex of the three platforms because:
 
 ## Trigger phrases
 
-Auto-trigger on:
+Auto-trigger ONLY on:
 - `/viralman-login-linkedin`
-- "set up linkedin for viralman"
-- "viralman 링크드인 연결", "viralman 링크드인 로그인"
+- "set up linkedin credentials only", "linkedin 자격증명만 다시 설정"
+
+If the user says generic things like "viralman setup", "viralman 셋업",
+"set up linkedin for viralman", "linkedin for viralman",
+defer to the `viralman-setup` skill instead — it's the unified entry.
 
 ## Boundaries
 
 - **Never accept the access token in chat.** It's a bearer secret. `read -s` → `save_creds.py --stdin`.
 - **Do not** WebFetch the LinkedIn developer portal — it's logged-in only.
 - The OAuth flow runs in the user's browser; you don't simulate it. You print the URL, the user clicks, and then they paste the resulting `code` parameter into a `read -s` prompt.
+
+## Step 0 — 통합 셋업과의 차이
+
+- 한 번에 채널을 고르고 싶다면 `/viralman-setup`을 사용하세요. 그 명령이 이 스킬의 절차를 그대로 호출합니다.
+- 이미 다른 채널들은 셋업되어 있고 이 채널만 다시 설정하려면 이 스킬을 그대로 진행하세요.
 
 ## Step 1 — Create the app
 
@@ -167,3 +177,7 @@ just rerun Steps 4–6.)
 - `Bummer, something went wrong` on the auth page: the redirect URI in Step 1.4 doesn't exactly match `http://localhost:8765/callback`. Check for trailing slash or `https`.
 - `401 invalid_token`: token expired (60-day cap) — re-run Steps 4–6.
 - `403 ACCESS_DENIED` on POST: the Share on LinkedIn product wasn't added in Step 1.3.
+
+---
+
+이 채널만 다시 설정할 때는 `/viralman-login-linkedin`도 동일한 절차를 안내합니다. 다른 채널도 함께 설정하시려면 `/viralman-setup`을 사용하세요.

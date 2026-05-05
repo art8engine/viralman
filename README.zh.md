@@ -72,9 +72,17 @@ chmod +x ~/.local/bin/viralman
 
 ### 凭证（一次性）
 
-按需运行：
+推荐 —— 一条命令选定渠道：
 
+```bash
+/viralman-setup                    # 选择类别 (gitmail / twitter / reddit / linkedin) → 只配置该渠道
+/viralman-setup gitmail            # 直接进入 gitmail 分支
+/viralman-setup --check            # 仅列出当前已保存的 key
 ```
+
+传统方式 —— 单独配置某个渠道：
+
+```bash
 /viralman-login-reddit       # 约 3 分钟，免费
 /viralman-login-twitter      # 约 5 分钟，免费档（约 1,500 帖/月）
 /viralman-login-linkedin     # 约 10 分钟，OAuth + 60 天令牌刷新
@@ -108,10 +116,53 @@ viralman                              # → http://localhost:8765
 /viral --only reddit,x "想要 r/programming 对这个 go regex 库的反馈"
 
 /dashboard                                       # 网页 UI
-/gitmail "Go 写的 K8s autoscaler" --max-users 100 --dry-run
+/gitmail https://github.com/you/jvm-monitor
 ```
 
-### gitmail CLI
+### gitmail — 5 步交互流程（CLI 或斜杠）
+
+一条斜杠命令搞定：
+
+```bash
+/gitmail https://github.com/you/jvm-monitor
+```
+
+系统将引导你完成 5 步：
+1. **输入目标** —— GitHub URL 或自由描述
+2. **输入语气·重点** —— 自由填写，如"友好的开发者语气"或"强调 47% 降本"
+3. **设定收件人** —— 直接指定 max_users + 种子 repo，或按关键词搜索
+4. **收集·审核** —— 预览收件人后确认发送
+5. **起草·发送** —— dry-run 预览 → 确认 → 实际发送
+
+如需直接从 CLI 跑 2-phase 流程：
+
+```bash
+# Phase 1：收集（直接指定种子 repo）
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 \
+  --provider claude \
+  > recipients.json
+
+# Phase 2：带语气·重点的 dry-run
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "友好的开发者，简短" \
+  --emphasis "free, OSS, JVM monitoring" \
+  --dry-run
+
+# 审核后实际发送（去掉 --dry-run）
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "友好的开发者，简短" \
+  --emphasis "free, OSS, JVM monitoring"
+```
+
+### gitmail CLI（一次性）
 
 ```bash
 ./scripts/gitmail.py run \
@@ -123,15 +174,41 @@ viralman                              # → http://localhost:8765
   --dry-run
 ```
 
+`run` 子命令同样接受新参数：
+
+```bash
+./scripts/gitmail.py run \
+  --description "JVM monitoring SaaS" \
+  --tone "casual" \
+  --emphasis "free, OSS" \
+  --seed-repos jvm-profiling/async-profiler \
+  --max-users 100 \
+  --dry-run
+```
+
+### 新参数
+
+- `--tone "..."` —— 邮件语气自由输入（"友好的开发者"、"技术细节"、"简洁"）
+- `--emphasis "..."` —— 强调点自由输入（"47% 降本"、"free, OSS"）
+- `--seed-repos owner/repo,...` —— 跳过搜索步骤，直接从这些 repo 的 stargazer 收集
+- `--keywords k1,k2` —— 用指定关键词替代自动分析结果
+- `--topics t1,t2` —— topics 覆盖
+
 每封邮件自带一键退订链接和 `List-Unsubscribe` 头。SMTP 默认 30 封/分钟（`SMTP_RATE_PER_MIN` 可调）。
 
 ## "看起来不像 AI" 是怎么做到的
 
 `ai-tell-sniffer` 对每份草稿运行：禁用词（"delve", "leverage", "let's dive in", "supercharge" 等 20+），每 60 字超过 1 个 em-dash，平衡式三段列举，结尾说教，hashtag 堆砌，没有具体锚点（数字/名称/时间/自我承认）的泛泛而谈。最多 3 轮重写，仍标红就拒绝自动发布。
 
+韩语输出同样会检测 12 种模式（활용하여 / 결론적으로 / "X 아니라 Y" 等），以及说教检测和 em-dash 密度分析。
+
+所有发送路径（dashboard、CLI 斜杠命令、直接脚本）共享同一份退订日志。某个地址一旦退订，后续所有活动都会自动跳过 —— 各路径策略保持一致。
+
 ## 状态
 
-v0.2.0 —— 本地 dashboard + gitmail 外联 + OAuth 登录。v0.1.0 的 `/viral` 流程未变。
+181 条回归测试守护行为与策略（Flask 路由、AI-tell 英/韩、OAuth、MIME RFC、i18n 一致性、退订一致性、5 步用户故事）。
+
+v0.3.0 —— 5 步交互式 gitmail 流程 + `/viralman-setup` 统一凭证入口 + `--tone` / `--emphasis` / `--seed-repos` 参数。本地 dashboard 和 v0.1.0 的 `/viral` 流程未变。
 
 ## 贡献
 

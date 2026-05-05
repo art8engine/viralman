@@ -15,6 +15,10 @@ channel. Run once per channel you want to activate.
 - "viralman 셋업", "viralman setup"
 - "set up viralman", "viralman 설정 도와줘"
 - "viralman credentials", "viralman 자격증명 설정"
+- "gitmail 셋업", "set up gitmail" (채널 이름이 포함되어 있으면 해당 채널로 자동 분기)
+- "twitter for viralman", "set up twitter for viralman"
+- "reddit for viralman", "set up reddit for viralman"
+- "linkedin for viralman", "set up linkedin for viralman"
 
 ## Boundaries (read before starting)
 
@@ -29,6 +33,8 @@ channel. Run once per channel you want to activate.
 ---
 
 ## Step 0 — pick a channel
+
+사용자가 `gitmail 셋업`, `set up twitter for viralman`처럼 채널 이름이 포함된 어구를 사용했다면, 카테고리 선택 단계는 자동으로 그 채널로 정해진 것으로 간주합니다. Step 0 질문을 건너뛰고 해당 채널 분기(Step 2a/2b/2c/2d)로 바로 이동하세요.
 
 If `$ARGUMENTS` already contains the category, skip this. Otherwise ask once:
 
@@ -112,6 +118,8 @@ Verify end-to-end: `./scripts/gitmail.py analyse "A quick test project"`.
 Done: "gitmail is hooked up — go to `http://localhost:8765/gitmail` and start
 a dry-run job."
 
+이 카테고리만 다시 설정할 때는 `/viralman-login-gitmail`도 동일한 절차를 안내합니다.
+
 ---
 
 ## Step 2b — twitter branch
@@ -138,6 +146,8 @@ Common failures: `403` = still Read-only (regenerate tokens); `401` = tokens
 pre-dated the permission change; `429` = monthly free-tier cap hit.
 
 Done: "X is hooked up. `/viral --only x` now posts via the API."
+
+이 카테고리만 다시 설정할 때는 `/viralman-login-twitter`도 동일한 절차를 안내합니다.
 
 ---
 
@@ -174,6 +184,8 @@ Common failures: `401`/`invalid_grant` = whitespace in secret (re-run `read -s`)
 wrong app type, or 2FA active.
 
 Done: "Reddit is hooked up. `/viral --only reddit --subreddit <name>` will post."
+
+이 카테고리만 다시 설정할 때는 `/viralman-login-reddit`도 동일한 절차를 안내합니다.
 
 ---
 
@@ -249,6 +261,8 @@ invalid_token` = token expired, re-run OAuth steps; `403 ACCESS_DENIED` =
 
 Done: "LinkedIn is hooked up. Token expires in 60 days — re-run
 `/viralman-setup linkedin` (skip app setup, just redo OAuth steps) to refresh."
+
+이 카테고리만 다시 설정할 때는 `/viralman-login-linkedin`도 동일한 절차를 안내합니다.
 
 ---
 

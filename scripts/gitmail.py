@@ -48,6 +48,10 @@ from creds import load as load_creds, CredsError  # noqa: E402
 import github_search  # noqa: E402
 import llm_compose  # noqa: E402
 import smtp_send  # noqa: E402
+from unsubscribe import (  # noqa: E402
+    load_unsubscribed_emails,
+    record_token_email,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -250,10 +254,20 @@ def step_send(
     dry_run: bool,
     reply_to: Optional[str] = None,
 ) -> Dict[str, Any]:
+    unsubbed = load_unsubscribed_emails()
+    skipped = 0
+    skips: List[Dict[str, str]] = []
+
     if dry_run:
         _emit("send_dry_run_start", count=len(composed))
         previews = []
         for r in composed:
+            email = (r.get("email") or "").lower()
+            if email and email in unsubbed:
+                skipped += 1
+                skips.append({"email": r["email"], "login": r.get("login", "")})
+                _emit("send_skip", reason="unsubscribed", to=r["email"])
+                continue
             preview = smtp_send.render_preview(
                 creds,
                 to_addr=r["email"],
@@ -262,11 +276,15 @@ def step_send(
                 unsubscribe_base=unsubscribe_base,
                 reply_to=reply_to,
             )
+            tok = preview.get("unsubscribe_token")
+            if tok:
+                record_token_email(tok, r["email"])
             previews.append({**r, "preview_headers": preview["headers"]})
             _emit("send_preview", to=r["email"], subject=r["subject"])
-        _emit("send_dry_run_done", count=len(previews))
-        return {"sent": 0, "failed": 0, "previews": previews,
-                "previews_count": len(previews)}
+        _emit("send_dry_run_done", count=len(previews), skipped=skipped)
+        return {"sent": 0, "failed": 0, "skipped": skipped,
+                "previews": previews, "previews_count": len(previews),
+                "skips": skips}
 
     try:
         smtp, limiter = smtp_send.open_session(creds)
@@ -280,6 +298,12 @@ def step_send(
     _emit("send_start", count=len(composed))
     try:
         for r in composed:
+            email = (r.get("email") or "").lower()
+            if email and email in unsubbed:
+                skipped += 1
+                skips.append({"email": r["email"], "login": r.get("login", "")})
+                _emit("send_skip", reason="unsubscribed", to=r["email"])
+                continue
             limiter.wait()
             try:
                 result = smtp_send.send_one(
@@ -291,6 +315,9 @@ def step_send(
                     reply_to=reply_to,
                 )
                 sent += 1
+                tok = result.get("unsubscribe_token")
+                if tok:
+                    record_token_email(tok, r["email"])
                 _emit("send_ok", to=r["email"], login=r["login"],
                       message_id=result["message_id"], sent=sent,
                       target=len(composed))
@@ -305,8 +332,9 @@ def step_send(
             smtp.quit()
         except Exception:
             pass
-    _emit("send_done", sent=sent, failed=failed)
-    return {"sent": sent, "failed": failed, "failures": failures}
+    _emit("send_done", sent=sent, failed=failed, skipped=skipped)
+    return {"sent": sent, "failed": failed, "skipped": skipped,
+            "failures": failures, "skips": skips}
 
 
 # --------------------------------------------------------------------------- #

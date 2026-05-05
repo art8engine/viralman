@@ -6,20 +6,30 @@ level: 2
 
 # viralman-login-reddit
 
+> **권장 진입점**: 새로 시작하시면 `/viralman-setup`을 사용하시는 것이 더 빠릅니다. 한 번에 채널을 고르고 그 채널만 설정합니다. 이 스킬은 특정 채널만 따로 손볼 때 또는 자동화 스크립트에서 호출 시 그대로 동작합니다.
+
 This skill guides the user through getting Reddit API credentials and saving them to `~/.viralman/.env` so `post_reddit.py` can authenticate. Reddit's API is free for personal script-app use.
 
 ## Trigger phrases
 
-Auto-trigger on:
+Auto-trigger ONLY on:
 - `/viralman-login-reddit`
-- "set up reddit for viralman"
-- "viralman reddit 로그인", "viralman 레딧 연결"
+- "set up reddit credentials only", "reddit 자격증명만 다시 설정"
+
+If the user says generic things like "viralman setup", "viralman 셋업",
+"set up reddit for viralman", "reddit for viralman",
+defer to the `viralman-setup` skill instead — it's the unified entry.
 
 ## Boundaries (read first)
 
 - **Never accept a password or client_secret in the chat.** They get logged. Always have the user pipe them through `read -s` into `scripts/save_creds.py --stdin`.
 - **Do not** try to scrape https://www.reddit.com/prefs/apps with WebFetch — Reddit blocks unauthenticated bots and the page is logged-in only.
 - The user runs the shell commands; you only print them. Do not run `read -s` yourself; that prompt has to land in the user's terminal, not in your tool output.
+
+## Step 0 — 통합 셋업과의 차이
+
+- 한 번에 채널을 고르고 싶다면 `/viralman-setup`을 사용하세요. 그 명령이 이 스킬의 절차를 그대로 호출합니다.
+- 이미 다른 채널들은 셋업되어 있고 이 채널만 다시 설정하려면 이 스킬을 그대로 진행하세요.
 
 ## Step 1 — Register a script app
 
@@ -97,3 +107,7 @@ If you see `401` or `invalid_grant`, the most common causes are:
 Tell them: "Reddit is hooked up. You can now run `/viral` with `--only reddit --subreddit <name>` and it'll publish to your account."
 
 Do not auto-trigger a test post.
+
+---
+
+이 채널만 다시 설정할 때는 `/viralman-login-reddit`도 동일한 절차를 안내합니다. 다른 채널도 함께 설정하시려면 `/viralman-setup`을 사용하세요.

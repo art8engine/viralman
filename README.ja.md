@@ -72,9 +72,17 @@ chmod +x ~/.local/bin/viralman
 
 ### 認証情報（一度だけ）
 
-必要なものだけ:
+推奨 — 1 コマンドでチャンネルを選ぶ:
 
+```bash
+/viralman-setup                    # カテゴリ選択 (gitmail / twitter / reddit / linkedin) → そのチャンネルだけ設定
+/viralman-setup gitmail            # gitmail ブランチへ直行
+/viralman-setup --check            # 現在保存済みのキー一覧だけ確認
 ```
+
+レガシー — 1 チャンネルだけ個別に設定したい場合:
+
+```bash
 /viralman-login-reddit       # 約 3 分、無料
 /viralman-login-twitter      # 約 5 分、無料枠（月 ~1,500 投稿）
 /viralman-login-linkedin     # 約 10 分、OAuth + 60 日トークンリフレッシュ
@@ -108,10 +116,53 @@ viralman                              # → http://localhost:8765
 /viral --only reddit,x "この go regex ライブラリに r/programming のフィードバックが欲しい"
 
 /dashboard                                       # Web UI
-/gitmail "Go 製 K8s autoscaler" --max-users 100 --dry-run
+/gitmail https://github.com/you/jvm-monitor
 ```
 
-### gitmail CLI
+### gitmail — 5 ステップ対話フロー（CLI またはスラッシュ）
+
+スラッシュ 1 つで完結:
+
+```bash
+/gitmail https://github.com/you/jvm-monitor
+```
+
+5 ステップでガイドされます:
+1. **ターゲット入力** — GitHub URL または自由記述
+2. **トーン・強調入力** — "フレンドリーな開発者トーン"、"47% コスト削減を強調" のような自由入力
+3. **受信者設定** — max_users + シードリポを直接指定、またはキーワード検索
+4. **収集・確認** — 受信者プレビューで確認後、送信を承認
+5. **下書き・送信** — dry-run プレビュー → 確定 → 実送信
+
+CLI で直接 2 フェーズ実行する場合:
+
+```bash
+# Phase 1: 収集（シードリポを直接指定）
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 \
+  --provider claude \
+  > recipients.json
+
+# Phase 2: トーン・強調を反映した dry-run
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "フレンドリーな開発者、短く" \
+  --emphasis "free, OSS, JVM monitoring" \
+  --dry-run
+
+# 確認後に実送信（--dry-run を外す）
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "フレンドリーな開発者、短く" \
+  --emphasis "free, OSS, JVM monitoring"
+```
+
+### gitmail CLI（ワンショット）
 
 ```bash
 ./scripts/gitmail.py run \
@@ -123,15 +174,41 @@ viralman                              # → http://localhost:8765
   --dry-run
 ```
 
+`run` サブコマンドも同じ新フラグを受け付けます:
+
+```bash
+./scripts/gitmail.py run \
+  --description "JVM monitoring SaaS" \
+  --tone "casual" \
+  --emphasis "free, OSS" \
+  --seed-repos jvm-profiling/async-profiler \
+  --max-users 100 \
+  --dry-run
+```
+
+### 新フラグ
+
+- `--tone "..."` — メールトーンの自由入力（"フレンドリーな開発者"、"技術的詳細"、"簡潔に"）
+- `--emphasis "..."` — 強調点の自由入力（"47% コスト削減"、"free, OSS"）
+- `--seed-repos owner/repo,...` — 検索ステップをスキップ、これらのリポの stargazer を直接収集
+- `--keywords k1,k2` — 自動分析の代わりに指定キーワードで検索
+- `--topics t1,t2` — topics オーバーライド
+
 すべてのメールにワンクリック解除リンクと `List-Unsubscribe` ヘッダー付き。SMTP は毎分 30 通がデフォルト（`SMTP_RATE_PER_MIN` で変更可）。
 
 ## 「AI っぽくない」仕組み
 
 `ai-tell-sniffer` が全下書きをチェック。禁止表現（"delve", "leverage", "let's dive in", "supercharge" など 20+）、60 語あたり em-dash が 1 個超、整いすぎた三項列挙、締めの説教、ハッシュタグ詰め込み、アンカーなしの一般論（数字 / 固有名 / 時刻 / 不確実性のいずれか必須）。最大 3 回リライト、それでも残れば自動配信拒否。
 
+韓国語出力にも 12 種のパターン（활용하여 / 결론적으로 / "X 아니라 Y" 形式など）の検出、モラライザー検知、em-dash 密度チェックが適用されます。
+
+すべての送信経路（ダッシュボード、CLI スラッシュコマンド、直接スクリプト）は同じ退会ログを共有します。一度退会したアドレスは次のキャンペーンで自動的にスキップされます — どの経路でもポリシーは一貫しています。
+
 ## ステータス
 
-v0.2.0 — ローカルダッシュボード + gitmail アウトリーチ + OAuth ログイン。v0.1.0 の `/viral` は変更なし。
+181 件のリグレッションテストで動作とポリシーを保護（Flask ルート、AI-tell 英/韓、OAuth、MIME RFC、i18n パリティ、退会一貫性、5 ステップユーザーストーリー）。
+
+v0.3.0 — 5 ステップ対話式 gitmail フロー + `/viralman-setup` 統合認証情報入力 + `--tone` / `--emphasis` / `--seed-repos` フラグ。ローカルダッシュボードと v0.1.0 の `/viral` は変更なし。
 
 ## コントリビュート
 

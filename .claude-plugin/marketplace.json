@@ -9,7 +9,7 @@
     {
       "name": "viralman",
       "description": "Black-themed local dashboard (twitter / reddit / gitmail) that drafts non-AI-feeling posts, runs targeted email outreach to stargazers of similar GitHub repos, and publishes only after explicit confirmation.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./",
       "category": "marketing",
       "homepage": "https://github.com/art8engine/viralman",
@@ -26,5 +26,5 @@
       ]
     }
   ],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

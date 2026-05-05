@@ -3,6 +3,7 @@
 .env.*
 .viralman/
 .viralman_unsubscribes.jsonl
+.viralman_unsub_tokens.jsonl
 posts.jsonl
 *.local
 

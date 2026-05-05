@@ -45,6 +45,13 @@ from compose_urls import twitter_intent, reddit_submit  # noqa: E402
 from sniffer_check import check as sniff_check  # noqa: E402
 import github_search  # noqa: E402
 import smtp_send  # noqa: E402
+from unsubscribe import (  # noqa: E402
+    record_unsubscribe as _record_unsubscribe_lib,
+    record_token_email as _record_token_email_lib,
+    load_unsubscribed_emails as _load_unsubscribed_emails_lib,
+    unsubscribe_log_path as _unsubscribe_log_path_lib,
+    token_email_map_path as _token_email_map_path_lib,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -109,96 +116,56 @@ UNSUBSCRIBES: Dict[str, float] = {}
 
 
 def record_unsubscribe(token: str) -> None:
+    """Record an unsubscribe in the in-memory map and persist via shared lib."""
     UNSUBSCRIBES[token] = time.time()
-    log = REPO_ROOT / ".viralman_unsubscribes.jsonl"
-    try:
-        with log.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"ts": time.time(), "token": token}) + "\n")
-    except Exception:
-        pass
+    _record_unsubscribe_lib(token)
 
 
 def _unsubscribe_log_path() -> Path:
-    """Path to the persisted token-only unsubscribe log."""
-    override = os.environ.get("VIRALMAN_UNSUB_LOG")
-    if override:
-        return Path(override)
-    return REPO_ROOT / ".viralman_unsubscribes.jsonl"
+    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
+    return _unsubscribe_log_path_lib()
 
 
 def _token_email_map_path() -> Path:
-    """Path to the token->email map (append-only jsonl).
-
-    Tests can override via the VIRALMAN_UNSUB_TOKEN_LOG env var.
-    """
-    override = os.environ.get("VIRALMAN_UNSUB_TOKEN_LOG")
-    if override:
-        return Path(override)
-    return REPO_ROOT / ".viralman_unsub_tokens.jsonl"
+    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
+    return _token_email_map_path_lib()
 
 
 def _record_token_email(token: str, email: str) -> None:
-    """Append a {token, email} row to the token-email map for later lookup."""
-    if not token or not email:
-        return
-    path = _token_email_map_path()
-    try:
-        with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"ts": time.time(), "token": token,
-                                 "email": email}) + "\n")
-    except Exception:
-        pass
+    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
+    _record_token_email_lib(token, email)
 
 
 def _load_unsubscribed_emails() -> set[str]:
-    """Resolve unsubscribed *emails* by joining the unsubscribe log with the
-    token->email map. In-memory UNSUBSCRIBES tokens are also included.
-
-    Missing files are treated as empty (backward-compat).
-    """
-    unsub_tokens: set[str] = set(UNSUBSCRIBES.keys())
-    unsub_log = _unsubscribe_log_path()
-    if unsub_log.exists():
-        try:
-            with unsub_log.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    tok = row.get("token")
-                    if tok:
-                        unsub_tokens.add(tok)
-        except Exception:
-            pass
-
-    if not unsub_tokens:
-        return set()
-
-    token_to_email: Dict[str, str] = {}
-    map_path = _token_email_map_path()
-    if map_path.exists():
-        try:
-            with map_path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        row = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    tok = row.get("token")
-                    email = row.get("email")
-                    if tok and email:
-                        token_to_email[tok] = email.lower()
-        except Exception:
-            pass
-
-    return {token_to_email[t] for t in unsub_tokens if t in token_to_email}
+    """Resolve unsubscribed *emails* via the shared lib, plus any in-memory
+    UNSUBSCRIBES tokens that already have an email mapping on disk."""
+    base = _load_unsubscribed_emails_lib()
+    if not UNSUBSCRIBES:
+        return base
+    # In-memory tokens (from a hot route) need a token→email lookup
+    map_path = _token_email_map_path_lib()
+    if not map_path.exists():
+        return base
+    try:
+        token_to_email: Dict[str, str] = {}
+        with map_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                tok = row.get("token")
+                email = row.get("email")
+                if tok and email:
+                    token_to_email[tok] = email.lower()
+        extra = {token_to_email[t] for t in UNSUBSCRIBES.keys()
+                 if t in token_to_email}
+        return base | extra
+    except Exception:
+        return base
 
 
 # --------------------------------------------------------------------------- #

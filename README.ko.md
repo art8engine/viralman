@@ -72,9 +72,17 @@ chmod +x ~/.local/bin/viralman
 
 ### 자격증명 (한 번만)
 
-필요한 것만:
+권장 — 한 명령으로 채널을 고르세요:
 
+```bash
+/viralman-setup                    # 카테고리 선택 (gitmail / twitter / reddit / linkedin) → 그 채널만 설정
+/viralman-setup gitmail            # 바로 gitmail 분기로
+/viralman-setup --check            # 현재 저장된 키 목록만 확인
 ```
+
+레거시 — 채널 하나만 따로 손볼 때:
+
+```bash
 /viralman-login-reddit       # 약 3분, 무료
 /viralman-login-twitter      # 약 5분, 무료 티어 (월 ~1,500 포스트)
 /viralman-login-linkedin     # 약 10분, OAuth + 60일 토큰 갱신
@@ -109,10 +117,53 @@ viralman                              # → http://localhost:8765
 /viral --lang ko "..."
 
 /dashboard                                       # 웹 UI
-/gitmail "Go 기반 K8s autoscaler" --max-users 100 --dry-run
+/gitmail https://github.com/you/jvm-monitor
 ```
 
-### gitmail CLI
+### gitmail — 5단계 인터랙티브 흐름 (CLI 또는 슬래시)
+
+슬래시 한 번이면 끝:
+
+```bash
+/gitmail https://github.com/you/jvm-monitor
+```
+
+5단계로 안내됩니다:
+1. **대상 받기** — GitHub URL 또는 자유 설명
+2. **톤·강조 받기** — "친근한 개발자 톤", "47% 비용 절감 강조" 같은 자유 입력
+3. **타깃 받기** — max_users + 시드 repo 직접 지정 또는 키워드
+4. **수집·검토** — recipients 미리보기 후 발송 확인
+5. **작성·발송** — dry-run 미리보기 → 확정 → 실발송
+
+CLI에서 직접 2-phase로 돌리려면:
+
+```bash
+# Phase 1: 수집 (시드 repo 직접 지정)
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 \
+  --provider claude \
+  > recipients.json
+
+# Phase 2: 톤·강조 반영 dry-run
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "친근한 개발자, 짧게" \
+  --emphasis "free, OSS, JVM monitoring" \
+  --dry-run
+
+# 검토 후 실발송 (--dry-run 빼고)
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name jvm-monitor \
+  --description "JVM monitoring SaaS" \
+  --tone "친근한 개발자, 짧게" \
+  --emphasis "free, OSS, JVM monitoring"
+```
+
+### gitmail CLI (1-shot)
 
 ```bash
 ./scripts/gitmail.py run \
@@ -124,15 +175,41 @@ viralman                              # → http://localhost:8765
   --dry-run
 ```
 
+`run` 서브커맨드도 동일 인자를 받습니다:
+
+```bash
+./scripts/gitmail.py run \
+  --description "JVM monitoring SaaS" \
+  --tone "casual" \
+  --emphasis "free, OSS" \
+  --seed-repos jvm-profiling/async-profiler \
+  --max-users 100 \
+  --dry-run
+```
+
+### 새 인자
+
+- `--tone "..."` — 메일 톤 자유 입력 ("친근한 개발자", "기술 디테일", "간결하게")
+- `--emphasis "..."` — 강조점 자유 입력 ("47% 비용 절감", "free, OSS")
+- `--seed-repos owner/repo,...` — 검색 단계 스킵, 그 repo의 stargazer만 직접 수집
+- `--keywords k1,k2` — 자동 분석 결과 대신 사용자 키워드로 검색
+- `--topics t1,t2` — topics override
+
 모든 메일에 원클릭 구독해지 + `List-Unsubscribe` 헤더. SMTP 분당 30건 기본 (`SMTP_RATE_PER_MIN`로 변경).
 
 ## "AI 같지 않게" 어떻게 굴러가나
 
 `ai-tell-sniffer`가 모든 초안 검사. 금지 표현 ("delve", "leverage", "let's dive in", "supercharge" 등 20+), 60단어당 em-dash 1개 초과, 균형 잡힌 3-tricolon, 마무리 모럴라이저, 해시태그 남발, 앵커 없는 일반 주장 (숫자/이름/시간/회의 중 하나 필수). 3번 리라이트 후에도 플래그 남으면 자동 발행 거부.
 
+한국어 출력에도 12종 패턴 (활용하여 / 결론적으로 / "X 아니라 Y" 등) 검출 + 모럴라이저 + em-dash 밀도 검사가 적용됩니다.
+
+모든 메일 발송 경로(대시보드, CLI 슬래시 명령, 직접 스크립트)는 같은 unsubscribe 로그를 공유합니다. 한 번 unsubscribe된 주소는 다음 캠페인에서 자동으로 스킵됩니다 — 양 경로의 정책이 일관됩니다.
+
 ## 상태
 
-v0.2.0 — 로컬 대시보드 + gitmail 아웃리치 + OAuth 로그인. v0.1.0의 `/viral`은 그대로.
+181 회귀 테스트로 동작·정책 보호 (Flask 라우트, AI-tell 영/한, OAuth, MIME RFC, i18n 파리티, unsubscribe 일관성, 5단계 사용자 스토리).
+
+v0.3.0 — 5단계 인터랙티브 gitmail 흐름 + `/viralman-setup` 통합 자격증명 입력 + `--tone` / `--emphasis` / `--seed-repos` 인자. 로컬 대시보드와 v0.1.0의 `/viral`은 그대로.
 
 ## 기여
 

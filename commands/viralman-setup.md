@@ -1,5 +1,5 @@
 ---
-description: One-stop setup for viralman — pick a category (gitmail / twitter / reddit / linkedin) and configure only that one. Plain-text token paste is allowed with a warning; the env-pipe path is recommended.
+description: One-stop setup for viralman — pick one channel and configure only that. The recommended entry point; legacy `/viralman-login-*` skills remain for backward compatibility. Plain-text token paste is allowed with a warning; the env-pipe path is recommended.
 allowed-tools: Read, Bash(./scripts/save_creds.py:*), Bash(./scripts/lib/github_search.py:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/check_creds.py:*)
 argument-hint: "[gitmail|twitter|reddit|linkedin] [--plain] [--check]"
 ---

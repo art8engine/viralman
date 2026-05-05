@@ -6,14 +6,24 @@ level: 2
 
 # viralman-login-twitter
 
+> **권장 진입점**: 새로 시작하시면 `/viralman-setup`을 사용하시는 것이 더 빠릅니다. 한 번에 채널을 고르고 그 채널만 설정합니다. 이 스킬은 특정 채널만 따로 손볼 때 또는 자동화 스크립트에서 호출 시 그대로 동작합니다.
+
 This skill guides the user through getting X (Twitter) API credentials. **Skipping this entirely is a valid choice** — viralman will fall back to opening a `https://twitter.com/intent/tweet?text=…` URL in the user's browser for one-click posting. Set up API access only if you want fully automatic posting (e.g., for threads or scheduled batch posts).
 
 ## Trigger phrases
 
-Auto-trigger on:
+Auto-trigger ONLY on:
 - `/viralman-login-twitter`
-- "set up twitter for viralman", "set up x for viralman"
-- "viralman 트위터 연결", "viralman x 로그인"
+- "set up twitter credentials only", "twitter 자격증명만 다시 설정"
+
+If the user says generic things like "viralman setup", "viralman 셋업",
+"set up twitter for viralman", "twitter for viralman",
+defer to the `viralman-setup` skill instead — it's the unified entry.
+
+## Step 0 — 통합 셋업과의 차이
+
+- 한 번에 채널을 고르고 싶다면 `/viralman-setup`을 사용하세요. 그 명령이 이 스킬의 절차를 그대로 호출합니다.
+- 이미 다른 채널들은 셋업되어 있고 이 채널만 다시 설정하려면 이 스킬을 그대로 진행하세요.
 
 ## Decide first: do they actually need API access?
 
@@ -122,3 +132,7 @@ Common failures:
 Tell the user: "X is hooked up. `/viral --only x` will now post via the API and support threads."
 
 Do not auto-trigger a test post — even one tweet eats their monthly quota.
+
+---
+
+이 채널만 다시 설정할 때는 `/viralman-login-twitter`도 동일한 절차를 안내합니다. 다른 채널도 함께 설정하시려면 `/viralman-setup`을 사용하세요.

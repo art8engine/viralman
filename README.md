@@ -43,22 +43,43 @@ viralman                 # opens http://localhost:8765
 
 ## Install
 
-### As a Claude Code plugin
+Three paths — pick the one that fits how you work.
+
+### Path 1 — Claude Code plugin (recommended)
+
+Natural language inside Claude Code — no commands to remember.
 
 ```bash
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### As a CLI
+Just say it — no commands to memorize:
+
+```
+"set up viralman"           → /viralman-setup fires. Step 0 auto-bootstraps venv/flask/shim,
+                               then saves credentials for one channel of your choice.
+"open the dashboard"        → /dashboard → http://localhost:8765
+"email people who starred similar repos"
+                            → /gitmail starts the 5-step interactive flow
+"write a post that doesn't feel AI"
+                            → /viral
+```
+
+Before any send, the agent asks (1) language (2) subject style (3) final OK — in that order.
+
+### Path 2 — Local CLI / dashboard (Python direct)
+
+No Claude Code needed — dashboard UI or bare CLI.
 
 ```bash
 git clone https://github.com/art8engine/viralman
 cd viralman
 python3 -m venv .venv
 .venv/bin/pip install flask
-.venv/bin/pip install -e .
+.venv/bin/pip install -e .   # Python ≤ 3.13 only. Skip on 3.14+ (shim dispatches instead)
 
+# Optional shim — call viralman from anywhere
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/viralman <<'SH'
 #!/usr/bin/env bash
@@ -69,41 +90,162 @@ chmod +x ~/.local/bin/viralman
 
 > **Python 3.14**: setuptools' editable install relies on executable `.pth` files, which 3.14 disables. The shim above bypasses that and is the recommended path on 3.14+.
 
-### Credentials (one-time)
-
-Recommended — pick a channel in one command:
+**First use:**
 
 ```bash
-/viralman-setup                    # choose a category (gitmail / twitter / reddit / linkedin) → configure only that channel
-/viralman-setup gitmail            # jump straight to the gitmail branch
-/viralman-setup --check            # list currently saved keys
+viralman                                       # dashboard → http://localhost:8765
+./scripts/save_creds.py --set GITHUB_TOKEN=... # save credentials
 ```
 
-Legacy — if you want to configure a single channel by itself:
+The 4-tab dashboard (Twitter / Reddit / Gitmail / Setup) covers everything. Slash commands require Claude Code.
+
+### Path 3 — Direct script (automation / CI / headless)
+
+For explicit CLI args without dashboard or Claude Code. Usable in CI pipelines.
+
+**Install**: same as Path 2 (git clone + venv + flask + package). Shim is optional.
+
+**Credentials:**
 
 ```bash
-/viralman-login-reddit       # ~3 min, free
-/viralman-login-twitter      # ~5 min, free tier (~1,500 posts/month)
-/viralman-login-linkedin     # ~10 min, OAuth + 60-day token refresh
-/viralman-login-gitmail      # ~5 min, GitHub token + SMTP + one LLM API key
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
 ```
 
-Or skip the API key: if you have **Claude Code** installed, viralman auto-detects the local `claude` binary and routes LLM calls through it (your Claude Max quota applies). Pick provider `claude (Max via CLI)` in the dashboard.
+**gitmail 2-phase flow:**
 
-Secrets stay out of the LLM context — skills pipe them via `read -s` into `~/.viralman/.env` (`chmod 600`).
+```bash
+# Phase 1: collect recipients (seed repos or keywords)
+./scripts/gitmail.py recipients \
+  --seed-repos owner1/repo1,owner2/repo2 \
+  --max-users 100 > recipients.json
 
-## Just say it (Claude Code agent mode)
+# Phase 2: dry-run with tone & emphasis → review → live send
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "..." \
+  --tone "..." \
+  --emphasis "..." \
+  --subject-style headline \
+  --dry-run
 
-You don't have to memorize commands. Inside Claude Code, viralman ships as a plugin with skills that auto-trigger on natural-language intent. Saying any of the following gets the agent to do the right thing:
+# Drop --dry-run to send for real after review
+```
 
-- *"set up viralman"* / *"viralman 셋업"* / *"viralman 깔아줘"* / *"set up gitmail credentials"* → `/viralman-setup` is the single entry point. Step 0 detects whether the package itself is installed and auto-bootstraps if needed (clone, venv, flask, shim, verify). Then it asks which channel to configure (gitmail / twitter / reddit / linkedin) and saves only that one. Plain-text token paste is allowed with a security warning; the recommended path is `read -s` so secrets never enter the chat log.
-- *"open the dashboard"* / *"대시보드 띄워줘"* / *"打开面板"* / *"ダッシュボード を 開いて"* → launches `http://localhost:8765`. If viralman isn't bootstrapped yet, the agent runs install first, then the dashboard.
-- *"email people who starred similar repos"* / *"이 프로젝트 홍보메일 보내줘"* → 5-step interactive gitmail flow: project → tone/emphasis → seed repos or keywords → recipients review → dry-run preview → live send.
-- *"write a launch post for X"* / *"AI 같지 않게 트윗 써줘"* → drafts a non-AI-feeling post via the `viral-writer` agent + `ai-tell-sniffer` review pass.
+One-shot: `./scripts/gitmail.py run --description "..." --max-users 100 --dry-run`
 
-The agent will ask for missing inputs once, never twice. It will refuse to proceed when something's hard-to-reverse (live send, OAuth save) without your explicit OK.
+## Examples
 
-If you prefer typed commands, every natural-language intent has an explicit slash form — see the Usage section below.
+### Block A — Natural language inside Claude Code (Path 1)
+
+Just say it in plain English — the agent picks the right slash command:
+
+```
+"set up viralman for me"
+"email people who starred async-profiler about our JVM monitoring tool"
+"write a post for r/programming, make it not feel AI"
+"open the dashboard"
+"set up viralman"
+```
+
+The agent fires `/gitmail`, `/viral`, `/dashboard`, or `/viralman-setup` automatically.
+Before any send, it asks (1) language (2) subject style (3) final OK — in that order.
+
+### Block B — Slash commands directly (Path 1 power users)
+
+```
+/viralman-setup gitmail
+/gitmail https://github.com/myuser/myproj
+/gitmail --seed-repos jvm-profiling/async-profiler --tone "friendly developer" --emphasis "47% cost reduction"
+/dashboard
+/viral our K8s autoscaler cut prod costs 47% in 3 weeks --mode growth-story
+```
+
+### Block C — Direct script (Path 3 / CI / headless)
+
+```bash
+# 1) Save credentials
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_USER=you@gmail.com --set SMTP_FROM=you@gmail.com
+read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin SMTP_PASSWORD; unset s
+
+# 2) Collect recipients (seed repos specified directly)
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 > recipients.json
+
+# 3) Dry-run with tone, emphasis, and subject style applied — review before sending
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "friendly developer, keep it short" \
+  --emphasis "47% cost reduction" \
+  --subject-style headline \
+  --dry-run
+
+# 4) Drop --dry-run to send for real after review
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "friendly developer, keep it short" \
+  --emphasis "47% cost reduction" \
+  --subject-style headline
+```
+
+## Sample gitmail output
+
+### Korean auto-generated (default)
+
+Calling with no options writes in Korean (system default):
+
+```
+SUBJECT: 안녕하세요, 이제 당신도 쉽게 사이드 프로젝트를 알릴 수 있습니다.
+
+안녕하세요, 저희 오픈소스 viralman 도구를 알려드리고자 메일을 보냈습니다.
+
+이제 당신은 본인의 사이드 프로젝트를 자연스럽게 알릴 수 있습니다.
+
+AI가 프로젝트를 분석해 어울리는 홍보 멘트를 만들어주고, 관심을 가질 만한 개발자에게 메일 발송까지 도와드립니다.
+
+당신의 사이드 프로젝트를 쉽게 바이럴 해보세요.
+
+관심이 있다면 이 링크를 확인하세요: https://github.com/art8engine/viralman
+```
+
+### English (via natural-language `--tone "in English"`)
+
+Add `--tone "in English"` (or natural-language equivalents like `영어로 써줘` / `中文で`) to switch:
+
+```
+SUBJECT: Hi, now you can easily share your side project too.
+
+Hi, we're reaching out to share our open-source project viralman.
+
+Now you can easily get your own side project in front of the developers most likely to care about it.
+
+The AI reads your repository, drafts a natural outreach note in your voice, and helps you deliver it to a relevant audience.
+
+Try giving your side project the reach it deserves, without the awkward self-promotion.
+
+If you're curious, here is the link: https://github.com/art8engine/viralman
+```
+
+## Credentials
+
+```bash
+/viralman-setup            # pick a channel (gitmail / twitter / reddit / linkedin) and configure it
+/viralman-setup gitmail    # jump straight to gitmail
+/viralman-setup --check    # list saved keys
+```
+
+Per-channel legacy commands: `/viralman-login-reddit` (~3 min), `/viralman-login-twitter` (~5 min), `/viralman-login-linkedin` (~10 min), `/viralman-login-gitmail` (~5 min).
+
+No API key needed: if **Claude Code** is installed, viralman auto-detects the local `claude` binary and routes LLM calls through it (Claude Max quota). Pick `claude (Max via CLI)` in the dashboard.
+
+Secrets never enter the LLM context — piped via `read -s` into `~/.viralman/.env` (`chmod 600`).
 
 ## Usage
 

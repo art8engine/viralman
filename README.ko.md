@@ -43,23 +43,41 @@ viralman                 # http://localhost:8765 자동으로 열림
 
 ## 설치
 
-### Claude Code 플러그인
+사용 방식에 맞게 3가지 진입 경로 중 하나를 고르세요.
+
+### 방법 1 — Claude Code 플러그인 (권장)
+
+Claude Code 안에서 자연어로 모든 것을 처리하고 싶은 분.
 
 ```bash
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### CLI
+명령어 안 외워도 됩니다 — 그냥 말하면 됩니다:
+
+```
+"viralman 셋업해줘"          → /viralman-setup 발화. Step 0이 venv/flask/shim 자동 부트스트랩,
+                               그 다음 원하는 채널 자격증명 1개 저장.
+"대시보드 띄워줘"             → /dashboard → http://localhost:8765
+"이 프로젝트 홍보메일 보내줘"  → /gitmail 5단계 인터랙티브 흐름 시작
+"AI 같지 않게 트윗 써줘"      → /viral
+```
+
+발송 직전에 에이전트가 (1) 언어 (2) subject 스타일 (3) 최종 OK 차례로 물어봅니다.
+
+### 방법 2 — 로컬 CLI / 대시보드 (Python 직접)
+
+Claude Code 없이 viralman만 쓰거나, 대시보드 웹 UI를 띄우고 싶은 분.
 
 ```bash
 git clone https://github.com/art8engine/viralman
 cd viralman
 python3 -m venv .venv
 .venv/bin/pip install flask
-.venv/bin/pip install -e .
+.venv/bin/pip install -e .   # Python ≤ 3.13만. 3.14+이면 이 줄 스킵 (shim이 dispatch)
 
-# 어디서든 viralman이 동작하도록 PATH에 shim
+# 어디서든 viralman으로 부르고 싶으면 shim 한 줄 (선택)
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/viralman <<'SH'
 #!/usr/bin/env bash
@@ -70,41 +88,163 @@ chmod +x ~/.local/bin/viralman
 
 > **Python 3.14**: setuptools editable install이 쓰는 실행 가능한 `.pth` 파일을 3.14가 막아놨다. 위 shim이 권장 경로.
 
-### 자격증명 (한 번만)
-
-권장 — 한 명령으로 채널을 고르세요:
+**첫 사용:**
 
 ```bash
-/viralman-setup                    # 카테고리 선택 (gitmail / twitter / reddit / linkedin) → 그 채널만 설정
-/viralman-setup gitmail            # 바로 gitmail 분기로
-/viralman-setup --check            # 현재 저장된 키 목록만 확인
+viralman                                       # 대시보드 → http://localhost:8765
+./scripts/save_creds.py --set GITHUB_TOKEN=... # 자격증명 저장
 ```
 
-레거시 — 채널 하나만 따로 손볼 때:
+대시보드 4탭(Twitter / Reddit / Gitmail / Setup)에서 모든 작업 진행. 슬래시 명령은 Claude Code가 있어야 사용 가능.
+
+### 방법 3 — 스크립트 직접 호출 (자동화 / CI / headless)
+
+대시보드·Claude Code 없이 명시적 인자로 스크립트만 돌리고 싶은 분. CI 파이프라인에서 사용 가능.
+
+**설치**: 방법 2와 동일 (git clone + venv + flask + 패키지). shim은 선택.
+
+**자격증명 저장:**
 
 ```bash
-/viralman-login-reddit       # 약 3분, 무료
-/viralman-login-twitter      # 약 5분, 무료 티어 (월 ~1,500 포스트)
-/viralman-login-linkedin     # 약 10분, OAuth + 60일 토큰 갱신
-/viralman-login-gitmail      # 약 5분, GitHub 토큰 + SMTP + LLM API 키 1개
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+# SMTP 등도 동일 패턴
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
 ```
 
-API 키 없이 가도 된다: **Claude Code**가 깔려 있으면 viralman이 로컬 `claude` 바이너리를 자동으로 감지해 LLM 호출을 그쪽으로 위임한다 (Claude Max plan quota 그대로). 대시보드에서 provider를 `claude (Max via CLI)`로 고르면 끝.
+**gitmail 2-phase 흐름:**
 
-비밀값은 LLM 컨텍스트에 안 들어간다. `read -s`로 직접 `~/.viralman/.env` (mode 600)에 저장.
+```bash
+# Phase 1: 수신자 수집 (시드 repo 직접 지정 또는 키워드)
+./scripts/gitmail.py recipients \
+  --seed-repos owner1/repo1,owner2/repo2 \
+  --max-users 100 > recipients.json
 
-## 자연어로 시키기 (Claude Code 에이전트 모드)
+# Phase 2: 톤·강조 반영 dry-run → 검토 → 실발송
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "..." \
+  --tone "..." \
+  --emphasis "..." \
+  --subject-style headline \
+  --dry-run
 
-명령 외울 필요 없습니다. Claude Code 안에서 viralman은 플러그인으로 동작하고, 스킬들이 자연어 의도에 자동 발화합니다. 다음 중 아무거나 말씀하시면 에이전트가 알아서 처리합니다:
+# 검토 OK이면 --dry-run 빼고 다시 실행
+```
 
-- *"viralman 셋업"* / *"set up viralman"* / *"viralman 깔아줘"* / *"viralman 자격증명 저장해줘"* → `/viralman-setup`이 단일 진입점입니다. Step 0에서 viralman 자체가 설치되어 있는지 점검하고, 없으면 자동으로 부트스트랩(clone, .venv, flask, shim, 검증)을 진행합니다. 그 다음 어떤 채널을 설정할지 묻고(gitmail / twitter / reddit / linkedin) 그 채널만 저장합니다. 평문 토큰 붙여넣기도 가능하지만(경고 후 진행), 권장은 `read -s`로 비밀값이 LLM 컨텍스트에 안 남게.
-- *"대시보드 띄워줘"* / *"open the dashboard"* → `http://localhost:8765` 실행. viralman이 아직 안 깔려 있으면 자동으로 install 먼저 진행, 그 다음 대시보드.
-- *"이 프로젝트 홍보메일 보내줘"* / *"비슷한 레포 사용자한테 메일"* → 5단계 인터랙티브 gitmail 흐름: 대상 → 톤·강조 → 시드 repo 또는 키워드 → 수신자 검토 → dry-run 미리보기 → 실발송.
-- *"AI 같지 않게 트윗 써줘"* / *"이번 출시 Reddit 글"* → `viral-writer` 에이전트가 초안, `ai-tell-sniffer`가 리뷰·리라이트.
+한방 실행: `./scripts/gitmail.py run --description "..." --max-users 100 --dry-run`
 
-누락된 입력은 한 번만 물어봅니다. 되돌리기 어려운 동작(실발송, OAuth 저장)은 명시적 동의 없이 진행하지 않습니다.
+## 사용 예시
 
-직접 슬래시 명령을 치고 싶으시면 모든 자연어 의도에 대응하는 명시적 슬래시 형태가 있습니다 — 아래 사용법 섹션 참고.
+### Block A — Claude Code 안에서 자연어로 (방법 1 사용자)
+
+그냥 말하면 됩니다 — 에이전트가 알맞은 슬래시 명령을 직접 발화합니다:
+
+```
+"이 프로젝트 비슷한 레포 스타거한테 메일 보내줘"
+"async-profiler 별표한 사람한테 우리 JVM 모니터링 도구 알려줘"
+"r/programming용 글 써줘, AI 같지 않게"
+"대시보드 띄워줘"
+"viralman 셋업해줘"
+```
+
+에이전트가 `/gitmail`, `/viral`, `/dashboard`, `/viralman-setup`을 알아서 발화합니다.
+발송 직전에는 (1) 언어 (2) subject 스타일 (3) 발송 OK 차례로 묻습니다.
+
+### Block B — 슬래시 명령 직접 입력 (방법 1 파워유저)
+
+```
+/viralman-setup gitmail
+/gitmail https://github.com/myuser/myproj
+/gitmail --seed-repos jvm-profiling/async-profiler --tone "친근한 개발자" --emphasis "47% 비용 절감"
+/dashboard
+/viral 우리 K8s 오토스케일러가 3주 만에 비용 47% 줄였다 --mode growth-story
+```
+
+### Block C — 스크립트 직접 호출 (방법 3 / CI / headless)
+
+```bash
+# 1) 자격증명 저장
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_USER=you@gmail.com --set SMTP_FROM=you@gmail.com
+read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin SMTP_PASSWORD; unset s
+
+# 2) 수신자 수집 (시드 repo 직접 지정)
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 > recipients.json
+
+# 3) 톤·강조·subject 스타일 반영 dry-run — 발송 전 검토
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "친근한 개발자, 짧게" \
+  --emphasis "47% 비용 절감" \
+  --subject-style headline \
+  --dry-run
+
+# 4) 검토 OK이면 --dry-run 빼고 다시 실행 → 실발송
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "친근한 개발자, 짧게" \
+  --emphasis "47% 비용 절감" \
+  --subject-style headline
+```
+
+## 발송 예시
+
+### 한국어 자동 생성 (기본)
+
+별다른 옵션 없이 호출하면 한국어로 작성됩니다 (시스템 기본값):
+
+```
+SUBJECT: 안녕하세요, 이제 당신도 쉽게 사이드 프로젝트를 알릴 수 있습니다.
+
+안녕하세요, 저희 오픈소스 viralman 도구를 알려드리고자 메일을 보냈습니다.
+
+이제 당신은 본인의 사이드 프로젝트를 자연스럽게 알릴 수 있습니다.
+
+AI가 프로젝트를 분석해 어울리는 홍보 멘트를 만들어주고, 관심을 가질 만한 개발자에게 메일 발송까지 도와드립니다.
+
+당신의 사이드 프로젝트를 쉽게 바이럴 해보세요.
+
+관심이 있다면 이 링크를 확인하세요: https://github.com/art8engine/viralman
+```
+
+### 영어 (자연어 `--tone "in English"` 또는 `--tone "영어로 써줘"`)
+
+Add `--tone "in English"` (or natural-language equivalents like `영어로 써줘` / `中文で`) to switch:
+
+```
+SUBJECT: Hi, now you can easily share your side project too.
+
+Hi, we're reaching out to share our open-source project viralman.
+
+Now you can easily get your own side project in front of the developers most likely to care about it.
+
+The AI reads your repository, drafts a natural outreach note in your voice, and helps you deliver it to a relevant audience.
+
+Try giving your side project the reach it deserves, without the awkward self-promotion.
+
+If you're curious, here is the link: https://github.com/art8engine/viralman
+```
+
+## 자격증명
+
+```bash
+/viralman-setup            # 채널 선택 (gitmail / twitter / reddit / linkedin) 후 설정
+/viralman-setup gitmail    # gitmail 분기로 바로
+/viralman-setup --check    # 저장된 키 목록 확인
+```
+
+채널별 레거시 명령: `/viralman-login-reddit` (~3분), `/viralman-login-twitter` (~5분), `/viralman-login-linkedin` (~10분), `/viralman-login-gitmail` (~5분).
+
+API 키 없어도 됨: **Claude Code**가 깔려 있으면 viralman이 로컬 `claude` 바이너리를 자동 감지해 LLM 호출을 위임한다 (Claude Max plan quota). 대시보드에서 `claude (Max via CLI)` 선택.
+
+비밀값은 LLM 컨텍스트에 안 들어간다 — `read -s`로 `~/.viralman/.env` (mode 600)에 직접 저장.
 
 ## 사용법
 

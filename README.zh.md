@@ -43,23 +43,41 @@ viralman                 # 自动打开 http://localhost:8765
 
 ## 安装
 
-### 作为 Claude Code 插件
+根据使用方式选择以下三条路径之一。
+
+### 路径 1 —— Claude Code 插件（推荐）
+
+适合想在 Claude Code 里用自然语言全程操作的用户。
 
 ```bash
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```
 
-### 作为 CLI
+不需要记命令，直接说：
+
+```
+"配置 viralman"          → /viralman-setup 触发。Step 0 自动完成 venv/flask/shim 引导，
+                           然后保存你选择的一个渠道的凭证。
+"打开面板"               → /dashboard → http://localhost:8765
+"给类似仓库的用户发邮件"   → /gitmail 启动 5 步交互流程
+"写一条不像 AI 的推文"    → /viral
+```
+
+发送前，代理依次确认 (1) 语言 (2) 主题风格 (3) 最终确认。
+
+### 路径 2 —— 本地 CLI / Dashboard（直接用 Python）
+
+适合不用 Claude Code、只想跑 viralman，或者想打开网页 Dashboard 的用户。
 
 ```bash
 git clone https://github.com/art8engine/viralman
 cd viralman
 python3 -m venv .venv
 .venv/bin/pip install flask
-.venv/bin/pip install -e .
+.venv/bin/pip install -e .   # 仅限 Python ≤ 3.13。3.14+ 跳过此行（shim 负责分发）
 
-# 写一行 shim，让 viralman 在任何路径都能跑
+# 可选：写一行 shim，让 viralman 在任何路径都能跑
 mkdir -p ~/.local/bin
 cat > ~/.local/bin/viralman <<'SH'
 #!/usr/bin/env bash
@@ -70,41 +88,167 @@ chmod +x ~/.local/bin/viralman
 
 > **Python 3.14**：setuptools 的 editable install 依赖可执行 `.pth` 文件，3.14 已禁用。3.14+ 推荐用上面的 shim。
 
-### 凭证（一次性）
-
-推荐 —— 一条命令选定渠道：
+**第一次使用：**
 
 ```bash
-/viralman-setup                    # 选择类别 (gitmail / twitter / reddit / linkedin) → 只配置该渠道
-/viralman-setup gitmail            # 直接进入 gitmail 分支
-/viralman-setup --check            # 仅列出当前已保存的 key
+viralman                                       # Dashboard → http://localhost:8765
+./scripts/save_creds.py --set GITHUB_TOKEN=... # 保存凭证
 ```
 
-传统方式 —— 单独配置某个渠道：
+Dashboard 4 个标签页（Twitter / Reddit / Gitmail / Setup）涵盖全部操作。斜杠命令需要 Claude Code。
+
+### 路径 3 —— 直接调用脚本（自动化 / CI / headless）
+
+适合不需要 Dashboard 或 Claude Code、只想用显式参数跑脚本的用户。支持 CI 流水线。
+
+**安装**：与路径 2 相同（git clone + venv + flask + 包安装）。shim 可选。
+
+**保存凭证：**
 
 ```bash
-/viralman-login-reddit       # 约 3 分钟，免费
-/viralman-login-twitter      # 约 5 分钟，免费档（约 1,500 帖/月）
-/viralman-login-linkedin     # 约 10 分钟，OAuth + 60 天令牌刷新
-/viralman-login-gitmail      # 约 5 分钟，GitHub 令牌 + SMTP + 一个 LLM API key
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+# SMTP 等其他凭证同理
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
 ```
 
-不想配 API key 也行：装了 **Claude Code**，viralman 会自动检测本地的 `claude` 二进制，把 LLM 调用走它（用你 Claude Max plan 的额度）。dashboard 里把 provider 选成 `claude (Max via CLI)` 即可。
+**gitmail 两阶段流程：**
 
-密码不进 LLM 上下文。脚本通过 `read -s` 直接管道写入 `~/.viralman/.env`（`chmod 600`）。
+```bash
+# 阶段 1：收集收件人（直接指定种子仓库或关键词）
+./scripts/gitmail.py recipients \
+  --seed-repos owner1/repo1,owner2/repo2 \
+  --max-users 100 > recipients.json
 
-## 直接告诉它（Claude Code 代理模式）
+# 阶段 2：带语气·重点的 dry-run → 审核 → 实发
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "..." \
+  --tone "..." \
+  --emphasis "..." \
+  --subject-style headline \
+  --dry-run
 
-不必记命令。在 Claude Code 内，viralman 作为插件运行，技能会自动响应自然语言意图。说下面任何一句，代理就会做对应的事：
+# 审核通过后去掉 --dry-run 再次运行即实发
+```
 
-- *"配置 viralman"* / *"set up viralman"* / *"安装 viralman"* / *"保存 viralman 凭证"* → `/viralman-setup` 是单一入口。Step 0 会检查 viralman 本身是否已安装，没装就自动引导（克隆、建 .venv、装 flask、放 shim、验证）。然后问你要配置哪个渠道（gitmail / twitter / reddit / linkedin），只配置那一个。可以直接粘贴明文 token（会先警告），推荐 `read -s` 让密钥不进 LLM 上下文。
-- *"打开面板"* / *"open the dashboard"* → 在 `http://localhost:8765` 启动。还没装好就先 install，再启动。
-- *"给类似仓库的 stargazer 发邮件"* → 5 步互动 gitmail 流程：项目 → 语气/重点 → 种子仓库或关键词 → 收件人审查 → dry-run 预览 → 实发。
-- *"写一条不像 AI 的推文"* → `viral-writer` 起草，`ai-tell-sniffer` 复核改写。
+**一次性运行：**
 
-缺失输入只问一次。不可逆操作（实发邮件、OAuth 保存）需要明确同意。
+```bash
+./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
+```
 
-如果你更喜欢直接打命令，每个自然语言意图都有对应的斜杠形式 — 见下方用法。
+## 使用示例
+
+### Block A —— 在 Claude Code 里用自然语言（路径 1 用户）
+
+直接说就行 —— 代理会自动选择正确的斜杠命令：
+
+```
+"帮我给 star 过类似项目的人发邮件"
+"把我们的 JVM 监控工具介绍给 star 了 async-profiler 的人"
+"帮我写一篇 r/programming 帖子，不要 AI 味"
+"打开面板"
+"配置 viralman"
+```
+
+代理自动触发 `/gitmail`、`/viral`、`/dashboard` 或 `/viralman-setup`。
+发送前依次确认 (1) 语言 (2) 主题风格 (3) 最终确认。
+
+### Block B —— 直接输入斜杠命令（路径 1 高级用户）
+
+```
+/viralman-setup gitmail
+/gitmail https://github.com/myuser/myproj
+/gitmail --seed-repos jvm-profiling/async-profiler --tone "友好的开发者" --emphasis "47% 降本"
+/dashboard
+/viral 我们的 K8s 自动伸缩器三周内把生产成本降了 47% --mode growth-story
+```
+
+### Block C —— 直接调用脚本（路径 3 / CI / headless）
+
+```bash
+# 1) 保存凭证
+read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
+./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_USER=you@gmail.com --set SMTP_FROM=you@gmail.com
+read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin SMTP_PASSWORD; unset s
+
+# 2) 收集收件人（直接指定种子仓库）
+./scripts/gitmail.py recipients \
+  --seed-repos jvm-profiling/async-profiler,oracle/graal \
+  --max-users 100 > recipients.json
+
+# 3) 带语气·重点·主题风格的 dry-run —— 发送前审核
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "友好的开发者，简短" \
+  --emphasis "47% 降本" \
+  --subject-style headline \
+  --dry-run
+
+# 4) 审核通过后去掉 --dry-run 再次运行即实发
+./scripts/gitmail.py send-from-recipients \
+  --recipients-file recipients.json \
+  --project-name myproj \
+  --description "JVM monitoring SaaS" \
+  --tone "友好的开发者，简短" \
+  --emphasis "47% 降本" \
+  --subject-style headline
+```
+
+## 邮件样例
+
+### 韩语自动生成（默认）
+
+不加任何选项调用时，默认生成韩语邮件（系统默认值）：
+
+```
+SUBJECT: 안녕하세요, 이제 당신도 쉽게 사이드 프로젝트를 알릴 수 있습니다.
+
+안녕하세요, 저희 오픈소스 viralman 도구를 알려드리고자 메일을 보냈습니다.
+
+이제 당신은 본인의 사이드 프로젝트를 자연스럽게 알릴 수 있습니다.
+
+AI가 프로젝트를 분석해 어울리는 홍보 멘트를 만들어주고, 관심을 가질 만한 개발자에게 메일 발송까지 도와드립니다.
+
+당신의 사이드 프로젝트를 쉽게 바이럴 해보세요.
+
+관심이 있다면 이 링크를 확인하세요: https://github.com/art8engine/viralman
+```
+
+### 英语（通过自然语言 `--tone "in English"`）
+
+Add `--tone "in English"` (or natural-language equivalents like `영어로 써줘` / `中文で`) to switch:
+
+```
+SUBJECT: Hi, now you can easily share your side project too.
+
+Hi, we're reaching out to share our open-source project viralman.
+
+Now you can easily get your own side project in front of the developers most likely to care about it.
+
+The AI reads your repository, drafts a natural outreach note in your voice, and helps you deliver it to a relevant audience.
+
+Try giving your side project the reach it deserves, without the awkward self-promotion.
+
+If you're curious, here is the link: https://github.com/art8engine/viralman
+```
+
+## 凭证
+
+```bash
+/viralman-setup            # 选渠道 (gitmail / twitter / reddit / linkedin) 并配置
+/viralman-setup gitmail    # 直接进入 gitmail 分支
+/viralman-setup --check    # 查看已保存的 key
+```
+
+各渠道独立命令：`/viralman-login-reddit`（约 3 分钟）、`/viralman-login-twitter`（约 5 分钟）、`/viralman-login-linkedin`（约 10 分钟）、`/viralman-login-gitmail`（约 5 分钟）。
+
+不配 API key 也行：装了 **Claude Code** 就自动走本地 `claude` 二进制（Claude Max plan 额度）。Dashboard 里选 `claude (Max via CLI)`。
+
+密码不进 LLM 上下文 —— `read -s` 直接写入 `~/.viralman/.env`（`chmod 600`）。
 
 ## 用法
 

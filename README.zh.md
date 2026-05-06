@@ -97,9 +97,8 @@ chmod +x ~/.local/bin/viralman
 
 不必记命令。在 Claude Code 内，viralman 作为插件运行，技能会自动响应自然语言意图。说下面任何一句，代理就会做对应的事：
 
-- *"安装 viralman"* / *"install viralman"* → 自助引导：必要时克隆仓库、建 .venv、装 flask + viralman、把 `viralman` shim 放进 PATH、验证 dashboard 能响应。幂等 — 重复运行安全。
+- *"配置 viralman"* / *"set up viralman"* / *"安装 viralman"* / *"保存 viralman 凭证"* → `/viralman-setup` 是单一入口。Step 0 会检查 viralman 本身是否已安装，没装就自动引导（克隆、建 .venv、装 flask、放 shim、验证）。然后问你要配置哪个渠道（gitmail / twitter / reddit / linkedin），只配置那一个。可以直接粘贴明文 token（会先警告），推荐 `read -s` 让密钥不进 LLM 上下文。
 - *"打开面板"* / *"open the dashboard"* → 在 `http://localhost:8765` 启动。还没装好就先 install，再启动。
-- *"保存 viralman 凭证"* → 触发 `/viralman-setup`，只配置你需要的渠道。可以直接粘贴明文 token（会先警告），推荐 `read -s` 让密钥不进 LLM 上下文。
 - *"给类似仓库的 stargazer 发邮件"* → 5 步互动 gitmail 流程：项目 → 语气/重点 → 种子仓库或关键词 → 收件人审查 → dry-run 预览 → 实发。
 - *"写一条不像 AI 的推文"* → `viral-writer` 起草，`ai-tell-sniffer` 复核改写。
 

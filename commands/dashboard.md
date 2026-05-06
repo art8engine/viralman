@@ -54,11 +54,12 @@ that exactly. Do not pip-install on the user's behalf without consent.
    d. Else: `~/.claude/plugins/cache/*/viralman/*/.venv/bin/python` — pick the latest.
    e. **Nothing found** — surface this:
       ```
-      viralman is not installed yet. I can run `/viralman-install` to bootstrap
-      it (clone repo if needed, create venv, install flask + viralman, drop a
-      shim on PATH). Should I?
+      viralman is not installed yet. I can run `/viralman-setup` to bootstrap
+      it — its Step 0 detects this and handles clone, venv, flask, and the
+      shim before asking about credentials. Should I?
       ```
-      If the user says yes, invoke `/viralman-install` first, then come back to step 1.
+      If the user says yes, invoke `/viralman-setup` first (its Step 0 covers
+      bootstrap), then come back to step 1.
 
 2. **Pre-flight checks** (only after binary is found):
    - Do `<binary> --help 2>&1 | head -1` and look for `usage:` text. If that fails with `ModuleNotFoundError: No module named 'flask'`, run `<venv>/bin/pip install flask` automatically (no prompt — flask is already declared in pyproject.toml as a runtime dep, so we treat its absence as a recoverable bug).
@@ -75,7 +76,7 @@ that exactly. Do not pip-install on the user's behalf without consent.
 
 ## Troubleshooting prompts (auto-recovery branches)
 
-- `command not found: viralman` → step 1.e (offer `/viralman-install`).
+- `command not found: viralman` → step 1.e (offer `/viralman-setup` — its Step 0 bootstraps).
 - `ModuleNotFoundError: flask` → run `<venv>/bin/pip install flask`, retry once.
 - `address already in use` → tell the user `--port 8766`. Don't auto-pick.
 - OAuth login goes nowhere → no `CLIENT_ID` / `CLIENT_SECRET` saved. Route them to `/viralman-setup` (recommended) or the dropdown's "tokens" modal.

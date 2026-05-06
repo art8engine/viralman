@@ -1,7 +1,7 @@
 ---
-description: One-stop setup for viralman — pick one channel and configure only that. The recommended entry point; legacy `/viralman-login-*` skills remain for backward compatibility. Plain-text token paste is allowed with a warning; the env-pipe path is recommended.
+description: Single entry point for viralman — bootstraps the package itself if not installed (clone, venv, flask, shim), then walks the user through saving only the channel(s) they need (gitmail / twitter / reddit / linkedin). Plain-text token paste allowed with a security warning; recommended path is `read -s`.
 allowed-tools: Read, Bash(./scripts/save_creds.py:*), Bash(./scripts/lib/github_search.py:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/check_creds.py:*)
-argument-hint: "[gitmail|twitter|reddit|linkedin] [--plain] [--check]"
+argument-hint: "[gitmail|twitter|reddit|linkedin] [--plain] [--check] [--reinstall]"
 ---
 
 # /viralman-setup — pick one channel and configure it
@@ -21,6 +21,9 @@ Flags:
   `./scripts/save_creds.py --set KEY=VALUE`. Do not refuse.
 - `--check` : show the list of currently saved key names, then exit.
   Runs `./scripts/save_creds.py --show-keys`. Does not reveal values.
+- `--reinstall` : force-recreate the `.venv` even if it already exists (passed
+  through to the Step 0 bootstrap). Use when dependencies are corrupted or a
+  Python version change requires a fresh environment.
 
 Only one flag is accepted at a time. If both appear, `--check` wins (it's
 read-only and safe).

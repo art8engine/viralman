@@ -10,24 +10,14 @@ viralman 환경을 처음부터 완전히 세팅합니다. venv 생성, flask �
 
 ## Trigger phrases
 
-Auto-trigger on:
+이 스킬은 **internal helper**입니다. 일반 사용자가 자연어로 호출하지 않습니다 — `/viralman-setup`이 단일 진입점이며, 이 스킬은 그 안의 Step 0에서 환경이 누락된 경우에만 위임 호출됩니다.
 
-- 슬래시: `/viralman-install`
-- 한국어: "viralman 깔아줘", "viralman 설치해줘", "viralman 부트스트랩", "viralman 기본 세팅", "viralman 처음부터 설치", "viralman 환경 만들어줘"
-- 영어: "install viralman", "set up viralman from scratch", "bootstrap viralman", "make viralman work", "viralman isn't installed", "set up the viralman environment"
-- 中文: "安装 viralman", "把 viralman 装好", "初始化 viralman", "配置 viralman 环境"
-- 日本語: "viralman をインストール", "viralman をセットアップ", "viralman の環境を作って", "viralman をインストールして"
+Auto-trigger ONLY on:
 
-### 유사 명령과 구분
+- 정확한 슬래시 명령: `/viralman-install`
+- 명시적 의도(드물게): "bootstrap viralman explicitly", "viralman 부트스트랩만 실행"
 
-| 사용자 말                                | 맞는 명령            |
-|------------------------------------------|----------------------|
-| "viralman 셋업", "viralman setup"        | 맥락에 따라 구분 필요 |
-| "credentials / 자격증명 / API 키 설정"   | `/viralman-setup`    |
-| "installation / 설치 / 깔기 / venv / pip" | **이 스킬**          |
-| "gitmail 설정", "twitter 연결"           | `/viralman-setup`    |
-
-모호한 경우 한 번만 물어보세요: "설치(venv·패키지)를 원하시나요, 아니면 자격증명(API 키·토큰) 설정을 원하시나요?"
+일반 어구 ("viralman 깔아줘", "install viralman", "viralman 설치해줘", "viralman をインストール", "安装 viralman" 등)는 `/viralman-setup` 스킬이 받습니다 — 그 쪽이 더 통합된 흐름이기 때문입니다 (환경 부트스트랩 + 자격증명 셋업을 한 진입점에서 처리).
 
 ---
 

@@ -23,16 +23,20 @@ channel. Run once per channel you want to activate.
 **한국어**:
 - "viralman 자격증명 저장해줘", "API 키 저장", "OAuth 등록"
 - "viralman 키 등록", "twitter 자격증명 저장", "reddit 인증"
+- "viralman 깔아줘", "viralman 설치해줘", "viralman 부트스트랩", "viralman 기본 세팅"
 
 **English**:
 - "save my viralman credentials", "register viralman api key"
 - "configure viralman auth", "set up viralman tokens"
+- "install viralman", "set up viralman from scratch", "bootstrap viralman", "make viralman work"
 
 **中文**:
 - "保存 viralman 凭证", "配置 viralman 密钥"
+- "安装 viralman", "把 viralman 装好"
 
 **日本語**:
 - "viralman の認証情報を保存", "viralman の API キーを設定"
+- "viralman をインストール", "viralman をセットアップ"
 
 ## Boundaries (read before starting)
 
@@ -46,9 +50,41 @@ channel. Run once per channel you want to activate.
 
 ---
 
-## Step 0 — pick a channel
+## Step 0 — environment check (auto-bootstrap if needed)
 
-사용자가 `gitmail 셋업`, `set up twitter for viralman`처럼 채널 이름이 포함된 어구를 사용했다면, 카테고리 선택 단계는 자동으로 그 채널로 정해진 것으로 간주합니다. Step 0 질문을 건너뛰고 해당 채널 분기(Step 2a/2b/2c/2d)로 바로 이동하세요.
+자격증명을 다루기 전에 viralman 자체가 동작하는지 먼저 확인합니다.
+
+1. **viralman binary 탐색** — 이 순서로:
+   a. `which viralman 2>/dev/null` — 있으면 사용
+   b. `test -x ~/.local/bin/viralman` — 있으면 사용
+   c. `git rev-parse --show-toplevel`이 viralman repo 루트(`.claude-plugin/marketplace.json`의 `name: viralman` 확인)이고 `<root>/.venv/bin/python`이 있으면 사용
+   d. `~/.claude/plugins/cache/*/viralman/*/.venv/bin/python` — 가장 최신 버전
+   e. **모두 없음** → 부트스트랩 필요
+
+2. **부트스트랩이 필요하면** — `/viralman-install` 스킬의 절차를 in-line으로 진행:
+   - REPO 위치 결정 (CWD git toplevel → plugin cache → `--path` → `~/viralman` clone)
+   - `python3 -m venv .venv` (Python 3.10+ 확인)
+   - `.venv/bin/pip install --upgrade pip`
+   - `.venv/bin/pip install flask`
+   - Python 3.13 이하면: `.venv/bin/pip install -e .` (editable). Python 3.14+이면 editable 스킵 (shim이 dispatch).
+   - `~/.local/bin/viralman` shim 작성 + `chmod +x`
+   - `~/.local/bin`이 PATH에 없으면 사용자에게 추가 안내문 출력 (자동 수정하지 않음)
+   - `~/.local/bin/viralman --no-browser --port 8765` 백그라운드 1.5초, 응답 확인 후 종료
+   - 검증 OK 메시지
+
+3. **이미 설치되어 있으면** — Step 1로 진행 (카테고리 선택).
+
+**경계**:
+- sudo 사용 금지
+- shell rc 자동 수정 금지 (안내만)
+- venv 외 글로벌 pip 설치 금지
+- `git clone`은 `$HOME` 외부로 가지 않음 (`--path` 명시 시 예외)
+
+---
+
+## Step 1 — pick a channel
+
+사용자가 `gitmail 셋업`, `set up twitter for viralman`처럼 채널 이름이 포함된 어구를 사용했다면, 카테고리 선택 단계는 자동으로 그 채널로 정해진 것으로 간주합니다. Step 1 질문을 건너뛰고 해당 채널 분기(Step 3a/3b/3c/3d)로 바로 이동하세요.
 
 If `$ARGUMENTS` already contains the category, skip this. Otherwise ask once:
 
@@ -67,7 +103,7 @@ Accept `1`–`4` or names. If the answer is still unclear after one follow-up, s
 
 ---
 
-## Step 1 — plain-text warning (conditional)
+## Step 2 — plain-text warning (conditional)
 
 Trigger if: `--plain` flag given, **or** the user pasted something that looks
 like a token (`ghp_…`, `sk-…`, long alphanumeric, Bearer prefix).
@@ -87,7 +123,7 @@ On no → present the `read -s` pipe pattern for each key instead.
 
 ---
 
-## Step 2a — gitmail branch
+## Step 3a — gitmail branch
 
 Needs three credential bundles: GitHub, SMTP, and one LLM provider.
 
@@ -136,7 +172,7 @@ a dry-run job."
 
 ---
 
-## Step 2b — twitter branch
+## Step 3b — twitter branch
 
 First ask whether they need API access or the compose-URL default is sufficient
 (one tweet at a time, no setup). If they choose the default, exit here.
@@ -165,7 +201,7 @@ Done: "X is hooked up. `/viral --only x` now posts via the API."
 
 ---
 
-## Step 2c — reddit branch
+## Step 3c — reddit branch
 
 Direct the user to `https://www.reddit.com/prefs/apps`. Create a **script**
 type app (not web, not installed) named `viralman`, redirect URI
@@ -203,7 +239,7 @@ Done: "Reddit is hooked up. `/viral --only reddit --subreddit <name>` will post.
 
 ---
 
-## Step 2d — linkedin branch
+## Step 3d — linkedin branch
 
 LinkedIn requires a browser OAuth flow. Tokens expire in 60 days; re-run
 Steps 3–5 (below) to refresh without repeating app setup.
@@ -280,7 +316,7 @@ Done: "LinkedIn is hooked up. Token expires in 60 days — re-run
 
 ---
 
-## Step 3 — final key-list confirmation
+## Step 4 — final key-list confirmation
 
 After any channel completes, run `./scripts/save_creds.py --show-keys` and
 confirm that the expected keys for that channel are present:

@@ -73,13 +73,13 @@ Header (shared across all 3 pages):
 Before launching, verify viralman is installed and importable. Sequence:
 
 1. Resolve the `viralman` binary using the priority order in `commands/dashboard.md` step 1.
-2. If nothing is found, do NOT attempt to clone or pip-install yourself — invoke `/viralman-install` instead, which is the dedicated bootstrap skill. It is idempotent.
-3. After install (or if already present), confirm the binary's `--help` works without a `ModuleNotFoundError`. If flask is missing, run `<venv>/bin/pip install flask` and retry once. After that retry fails, surface the error.
+2. If nothing is found, do NOT attempt to clone or pip-install yourself — invoke `/viralman-setup` instead. Its Step 0 detects the missing environment and runs the bootstrap (clone, venv, flask, shim) before asking about credentials. Idempotent.
+3. After bootstrap (or if already present), confirm the binary's `--help` works without a `ModuleNotFoundError`. If flask is missing, run `<venv>/bin/pip install flask` and retry once. After that retry fails, surface the error.
 
 Why two skills:
 - `/dashboard` is "make the UI run for me, now". It must not become a heavy installer.
-- `/viralman-install` is "from a clean machine, get the package working". It owns clone, venv, and shim.
-- The dashboard skill *invokes* the install skill on cache miss. The user shouldn't need to know the difference.
+- `/viralman-setup` is the single entry point for "get viralman working" — its Step 0 owns clone, venv, and shim; later steps cover credentials.
+- The dashboard skill *invokes* the setup skill on cache miss. The user shouldn't need to know the difference.
 
 ## Step 1 — Start the server
 

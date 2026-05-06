@@ -97,9 +97,8 @@ API 키 없이 가도 된다: **Claude Code**가 깔려 있으면 viralman이 �
 
 명령 외울 필요 없습니다. Claude Code 안에서 viralman은 플러그인으로 동작하고, 스킬들이 자연어 의도에 자동 발화합니다. 다음 중 아무거나 말씀하시면 에이전트가 알아서 처리합니다:
 
-- *"viralman 깔아줘"* / *"install viralman"* → 부트스트랩: 필요하면 clone, .venv 생성, flask + viralman 설치, `viralman` shim PATH에 설치, 대시보드 응답 확인. 멱등성 — 두 번 돌려도 안전합니다.
+- *"viralman 셋업"* / *"set up viralman"* / *"viralman 깔아줘"* / *"viralman 자격증명 저장해줘"* → `/viralman-setup`이 단일 진입점입니다. Step 0에서 viralman 자체가 설치되어 있는지 점검하고, 없으면 자동으로 부트스트랩(clone, .venv, flask, shim, 검증)을 진행합니다. 그 다음 어떤 채널을 설정할지 묻고(gitmail / twitter / reddit / linkedin) 그 채널만 저장합니다. 평문 토큰 붙여넣기도 가능하지만(경고 후 진행), 권장은 `read -s`로 비밀값이 LLM 컨텍스트에 안 남게.
 - *"대시보드 띄워줘"* / *"open the dashboard"* → `http://localhost:8765` 실행. viralman이 아직 안 깔려 있으면 자동으로 install 먼저 진행, 그 다음 대시보드.
-- *"viralman 자격증명 저장해줘"* / *"set up gitmail"* → `/viralman-setup`이 발화돼서 필요한 채널만 저장. 채팅창에 평문 토큰 붙여넣기도 가능하지만 (경고 후 진행), 권장은 `read -s`로 비밀값이 LLM 컨텍스트에 안 남게.
 - *"이 프로젝트 홍보메일 보내줘"* / *"비슷한 레포 사용자한테 메일"* → 5단계 인터랙티브 gitmail 흐름: 대상 → 톤·강조 → 시드 repo 또는 키워드 → 수신자 검토 → dry-run 미리보기 → 실발송.
 - *"AI 같지 않게 트윗 써줘"* / *"이번 출시 Reddit 글"* → `viral-writer` 에이전트가 초안, `ai-tell-sniffer`가 리뷰·리라이트.
 

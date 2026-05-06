@@ -96,9 +96,8 @@ Secrets stay out of the LLM context — skills pipe them via `read -s` into `~/.
 
 You don't have to memorize commands. Inside Claude Code, viralman ships as a plugin with skills that auto-trigger on natural-language intent. Saying any of the following gets the agent to do the right thing:
 
-- *"install viralman"* / *"viralman 깔아줘"* / *"安装 viralman"* / *"viralman をインストール"* → bootstraps the package: clones if needed, creates the venv, installs flask + viralman, drops a `viralman` shim on PATH, verifies the dashboard responds. Idempotent — safe to re-run.
+- *"set up viralman"* / *"viralman 셋업"* / *"viralman 깔아줘"* / *"set up gitmail credentials"* → `/viralman-setup` is the single entry point. Step 0 detects whether the package itself is installed and auto-bootstraps if needed (clone, venv, flask, shim, verify). Then it asks which channel to configure (gitmail / twitter / reddit / linkedin) and saves only that one. Plain-text token paste is allowed with a security warning; the recommended path is `read -s` so secrets never enter the chat log.
 - *"open the dashboard"* / *"대시보드 띄워줘"* / *"打开面板"* / *"ダッシュボード を 開いて"* → launches `http://localhost:8765`. If viralman isn't bootstrapped yet, the agent runs install first, then the dashboard.
-- *"set up gitmail credentials"* / *"viralman 자격증명 저장해줘"* → drives `/viralman-setup` to save just the channel you need. Plain-text token paste is allowed with a security warning; the recommended path is `read -s` so secrets never enter the chat log.
 - *"email people who starred similar repos"* / *"이 프로젝트 홍보메일 보내줘"* → 5-step interactive gitmail flow: project → tone/emphasis → seed repos or keywords → recipients review → dry-run preview → live send.
 - *"write a launch post for X"* / *"AI 같지 않게 트윗 써줘"* → drafts a non-AI-feeling post via the `viral-writer` agent + `ai-tell-sniffer` review pass.
 

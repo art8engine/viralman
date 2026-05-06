@@ -97,9 +97,8 @@ API キーなしでも動く: **Claude Code** が入っていれば viralman が
 
 コマンドを覚える必要はありません。Claude Code 内で viralman はプラグインとして動き、スキルが自然言語の意図に自動反応します。次のどれかを言えば、エージェントが正しく処理します:
 
-- *"viralman をインストール"* / *"install viralman"* → ブートストラップ: 必要ならクローン、.venv 作成、flask + viralman インストール、`viralman` shim を PATH に配置、ダッシュボード応答を検証。冪等 — 再実行も安全。
+- *"viralman をセットアップ"* / *"set up viralman"* / *"viralman をインストール"* / *"viralman の認証情報を保存"* → `/viralman-setup` が単一エントリポイント。Step 0 で viralman 本体が入っているか確認し、なければ自動でブートストラップ（クローン、.venv 作成、flask インストール、shim 配置、検証）。その後どのチャンネルを設定するか聞いて（gitmail / twitter / reddit / linkedin）、そのチャンネルだけ保存。平文トークン貼り付けも可能（警告あり）、推奨は `read -s` でシークレットを LLM コンテキストに残さない。
 - *"ダッシュボード を 開いて"* / *"open the dashboard"* → `http://localhost:8765` を起動。インストールされていなければ自動で install を先に実行。
-- *"viralman の認証情報を保存"* → `/viralman-setup` が起動して必要なチャンネルだけ保存。平文トークン貼り付けも可能（警告あり）、推奨は `read -s` でシークレットを LLM コンテキストに残さない。
 - *"似たリポジトリのスターガザーにメール"* → 5 ステップ対話型 gitmail フロー: 対象 → トーン・強調 → シードリポまたはキーワード → 受信者レビュー → dry-run プレビュー → 本送信。
 - *"AI っぽくない 投稿 を 書いて"* → `viral-writer` が下書き、`ai-tell-sniffer` がレビュー＆リライト。
 

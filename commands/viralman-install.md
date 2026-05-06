@@ -1,5 +1,5 @@
 ---
-description: Bootstrap viralman so any subsequent command works — find or clone the repo, create .venv, install flask + viralman, drop a `viralman` shim on PATH, verify. Idempotent: re-running is safe and only fixes what's missing.
+description: (Internal helper — `/viralman-setup` is the recommended entry point and invokes this on cache miss.) Bootstrap viralman: find or clone the repo, create .venv, install flask + viralman, drop a `viralman` shim on PATH, verify. Idempotent.
 allowed-tools: Read, Bash(git clone:*), Bash(git pull:*), Bash(git rev-parse:*), Bash(python3:*), Bash(./scripts/save_creds.py:*), Bash(test:*), Bash(mkdir:*), Bash(chmod:*), Bash(which:*), Bash(ls:*), Bash(cat:*), Bash(cd:*)
 argument-hint: "[--path /custom/install/path] [--no-shim] [--reinstall]"
 ---

@@ -203,6 +203,7 @@ def step_compose(
     template_only: bool = False,
     tone: Optional[str] = None,
     emphasis: Optional[str] = None,
+    subject_style: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """Returns each recipient enriched with subject+body."""
     _emit("compose_start", count=len(recipients), template_only=template_only)
@@ -227,6 +228,7 @@ def step_compose(
                 provider=provider,
                 tone=tone,
                 emphasis=emphasis,
+                subject_style=subject_style,
             )
         except Exception as e:
             _emit("compose_error", login=r["login"], error=str(e))
@@ -437,6 +439,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         template_only=args.template_only,
         tone=getattr(args, "tone", None),
         emphasis=getattr(args, "emphasis", None),
+        subject_style=getattr(args, "subject_style", None),
     )
 
     result = step_send(
@@ -564,6 +567,7 @@ def cmd_send_from_recipients(args: argparse.Namespace) -> int:
         template_only=args.template_only,
         tone=args.tone,
         emphasis=args.emphasis,
+        subject_style=getattr(args, "subject_style", None),
     )
 
     result = step_send(
@@ -599,6 +603,11 @@ def main() -> int:
                          help="Free-form tone hint (e.g. 'casual hype, short').")
         sp.add_argument("--emphasis", default=None,
                          help="Free-form emphasis points to lead with.")
+        sp.add_argument("--subject-style",
+                         choices=["auto", "headline", "tag", "simple"],
+                         default="auto",
+                         help="Subject pattern. auto=LLM picks; headline=greeting+benefit; "
+                              "tag=[Label] product one-liner; simple=very short product intro.")
 
     def add_common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--description", required=True,

@@ -140,7 +140,7 @@ class TestSmtpRender(unittest.TestCase):
                        out["headers"])
         self.assertIn("Message-ID:", out["headers"])
         self.assertIn(out["unsubscribe_token"], out["headers"])
-        self.assertIn("Reply with 'unsubscribe'", out["body"])
+        self.assertIn("Unsubscribe:", out["body"])
         self.assertIn("hello there", out["body"])
 
     def test_unsubscribe_url_uses_token(self) -> None:

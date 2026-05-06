@@ -25,10 +25,7 @@ from typing import Dict, Iterable, Optional
 
 
 UNSUBSCRIBE_FOOTER_TMPL = (
-    "\n\n---\n"
-    "Got this once because you starred a related open-source project on GitHub. "
-    "Reply with 'unsubscribe' and I won't email you again. "
-    "Or follow this link: {unsubscribe_url}\n"
+    "\n\nUnsubscribe: {unsubscribe_url}\n"
 )
 
 

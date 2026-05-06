@@ -195,13 +195,14 @@ def test_unsubscribe_token_appears_in_both_header_and_body():
 def test_body_includes_human_unsubscribe_text():
     out = _render()
     body = out["body"]
-    # The footer template uses "Reply with 'unsubscribe'"
+    # The footer template is a single short line: "Unsubscribe: <url>"
     assert "unsubscribe" in body.lower(), (
         "Body does not contain any unsubscribe instruction"
     )
-    # More specifically, check for the reply instruction
-    assert "reply" in body.lower() and "unsubscribe" in body.lower(), (
-        "Body should contain a 'reply ... unsubscribe' instruction"
+    # And the actual unsubscribe URL must be reachable from the body itself,
+    # not only the List-Unsubscribe header.
+    assert out["unsubscribe_token"] in body, (
+        "Body should contain the unsubscribe URL with its token"
     )
 
 

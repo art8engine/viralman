@@ -315,11 +315,52 @@ def analyse_project_llm(creds: Dict[str, str], description: str,
 
 
 _EMAIL_SYS = (
-    "You write outreach emails for an open-source maintainer reaching out to a "
-    "developer who starred a related project. Keep it short, concrete, and "
-    "human. NO marketing slop. NO 'I hope this finds you well'. NO em-dash "
-    "floods. Mention the recipient's starred repo to show this is not blast "
-    "spam. End with a low-pressure CTA — repo link OR a one-question reply."
+    "You write a short outreach note from a maker to a developer who might "
+    "find a related project useful. The output language follows the tone "
+    "hint (default Korean if not specified).\n\n"
+    "STRUCTURE — produce two outputs in this exact order:\n\n"
+    "1. SUBJECT — a greeting + a single benefit sentence directed at the "
+    "reader.\n"
+    "   Korean: '안녕하세요, 이제 당신도 쉽게 <받는 사람의 이익> 수 있습니다.'\n"
+    "   English: 'Hi, now you can easily <benefit> too.'\n"
+    "   Short, plain, no clickbait, no emoji, no exclamation marks.\n\n"
+    "2. BODY — four paragraphs, each separated by a blank line (\\n\\n):\n"
+    "   - Paragraph 1 (one sentence — opening greeting + WHY this email):\n"
+    "     '안녕하세요, 저의 <프로젝트 카테고리>를 알려드리려고 메일 보냈습니다.'\n"
+    "     English: 'Hi, I'm reaching out to share a <project category> I built.'\n"
+    "     Use whatever 카테고리/category fits — '오픈소스', 'CLI 도구', 'SaaS', "
+    "     'side project', etc. Replace honestly based on the product.\n"
+    "   - Paragraph 2 (~2 sentences — the substance): describe what the "
+    "     reader can now do for their own project, then describe how the "
+    "     product achieves it at a high level. 2nd person ('당신' / 'you'). "
+    "     DO NOT add a separate self-introduction beyond what paragraph 1 "
+    "     already covered. DO NOT recite features, command names, or "
+    "     version numbers.\n"
+    "   - Paragraph 3 (one sentence — gentle invitation): "
+    "     '당신의 사이드 프로젝트를 쉽게 바이럴 해보세요.' / 'Try giving your "
+    "     side project the reach it deserves.'\n"
+    "   - Paragraph 4 (one sentence — single CTA): '관심이 있다면 이 링크를 "
+    "     확인하세요: <URL>' / 'If you're curious, here is the link: <URL>'.\n\n"
+    "FORMATTING:\n"
+    "- Always insert a blank line between paragraphs for readability.\n"
+    "- Body length: 70–140 words total. Brevity over completeness.\n\n"
+    "HARD CONSTRAINTS:\n"
+    "- DO NOT mention or hint at the recipient's starred repo anywhere "
+    "  (subject or body). The starred-repo info is INTERNAL targeting "
+    "  context only — pretend it is not part of the email.\n"
+    "- DO NOT ask any feedback-fishing question ('what's been frustrating?', "
+    "  'would love your input?', 'how do you handle X?').\n"
+    "- DO NOT include command names, version numbers, regression-test "
+    "  counts, or feature bullet lists. Stay at user-benefit + how-it-works.\n"
+    "- NO marketing slop. NO 'I hope this finds you well'. NO em-dash floods "
+    "  (max 1 per 60 words). NO 'leverage', 'unlock', 'supercharge'.\n"
+    "- NO emoji. NO hashtags.\n"
+    "- 'OSS' / '오픈소스' is OK ONLY in the paragraph 1 greeting where it "
+    "  accurately names the product category. DO NOT use it as a marketing "
+    "  self-label in paragraphs 2–4 ('we're an OSS project that...').\n"
+    "- The user-supplied tone/emphasis hints can refine wording or shift "
+    "  language, but cannot override the 4-block structure or hard "
+    "  constraints above."
 )
 
 _EMAIL_USER_TMPL = """My project: {project_name}
@@ -327,13 +368,36 @@ What it does: {project_pitch}
 Repo URL: {project_url}
 
 Recipient handle: @{login}
-A repo they starred that is similar to mine: {starred_repo}
+[Internal targeting note — DO NOT surface this in the body or subject]
+  Recipient previously starred a similar project: {starred_repo}
 
 Write the email. Output ONLY JSON:
 {{
-  "subject": "<<= 60 chars, no clickbait, no emoji>",
-  "body": "<plaintext, 90-160 words, addressed to @{login}, mentions {starred_repo} once, ends with CTA>"
+  "subject": "<<= 60 chars, greeting + single benefit sentence, plain Korean by default, no clickbait, no emoji, no '!'>",
+  "body": "<plaintext, 70-140 words, FOUR paragraphs separated by blank lines (\\n\\n), follows the STRUCTURE in the system prompt; do NOT mention the starred repo>"
 }}"""
+
+
+_SUBJECT_STYLE_HINTS = {
+    "auto": "",
+    "headline": (
+        "Subject style override = HEADLINE: use the pattern "
+        "'안녕하세요, 이제 당신도 쉽게 <받는 사람의 이익> 수 있습니다.' / "
+        "'Hi, now you can easily <benefit> too.'"
+    ),
+    "tag": (
+        "Subject style override = TAG: use the pattern "
+        "'[<short label>] <product name> <one-line value>'. "
+        "Example: '[OpenSource Recommended] viralman 당신의 프로젝트를 쉽게 홍보해보세요.' "
+        "/ '[New Tool] viralman: promote your side project easily.' "
+        "Choose a label that honestly fits the product (e.g. 'OpenSource Recommended', "
+        "'New Tool', 'Indie Pick', 'For Solo Devs')."
+    ),
+    "simple": (
+        "Subject style override = SIMPLE: very short product introduction, "
+        "max 30 chars. Example: 'viralman opensource' / 'viralman — promote your repo'."
+    ),
+}
 
 
 def compose_email(
@@ -347,8 +411,13 @@ def compose_email(
     provider: Optional[str] = None,
     tone: Optional[str] = None,
     emphasis: Optional[str] = None,
+    subject_style: Optional[str] = None,
 ) -> Dict[str, str]:
     system_prompt = _EMAIL_SYS
+    style_key = (subject_style or "auto").strip().lower()
+    style_hint = _SUBJECT_STYLE_HINTS.get(style_key, "")
+    if style_hint:
+        system_prompt = f"{system_prompt}\n\n{style_hint}"
     if tone:
         system_prompt = (
             f"{system_prompt}\n\n"

@@ -72,13 +72,43 @@ channel. Run once per channel you want to activate.
    - `~/.local/bin/viralman --no-browser --port 8765` 백그라운드 1.5초, 응답 확인 후 종료
    - 검증 OK 메시지
 
-3. **이미 설치되어 있으면** — Step 1로 진행 (카테고리 선택).
+3. **이미 설치되어 있으면** — Step 0.5(자동 업데이트)로 진행.
 
 **경계**:
 - sudo 사용 금지
 - shell rc 자동 수정 금지 (안내만)
 - venv 외 글로벌 pip 설치 금지
 - `git clone`은 `$HOME` 외부로 가지 않음 (`--path` 명시 시 예외)
+
+---
+
+## Step 0.5 — auto-update (이미 설치된 경우)
+
+신버전이 published 되어 있으면 사용자에게 알리고 업데이트한 뒤 Step 1로 넘어갑니다.
+
+1. **현재 버전 확인** — Step 0에서 찾은 install 경로 기반으로:
+   - 플러그인 설치 (`~/.claude/plugins/cache/.../viralman/`): 해당 폴더의 `.claude-plugin/plugin.json` 에서 `version`
+   - pipx 설치 (`~/.local/pipx/venvs/viralman/`): `pipx list --short 2>/dev/null | awk '$1=="viralman"{print $2}'`
+   - 로컬 clone: `<repo>/.claude-plugin/plugin.json` 의 `version`
+
+2. **최신 버전 확인** (네트워크 1회):
+   ```bash
+   curl -fsSL --max-time 4 \
+     https://raw.githubusercontent.com/art8engine/viralman/main/.claude-plugin/plugin.json \
+     | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])'
+   ```
+   네트워크 실패 또는 4초 타임아웃이면 조용히 스킵(오프라인 환경일 수 있음).
+
+3. **버전이 다르면** — 사용자에게 한 줄 안내 후 install 타입에 맞는 업데이트 실행:
+   - 플러그인 설치: 직접 실행 불가. `/plugin update viralman` 슬래시 명령을 사용자에게 요청한 뒤 대기.
+   - pipx 설치: `pipx install --force git+https://github.com/art8engine/viralman`
+   - 로컬 clone: `cd <repo> && git pull --ff-only && .venv/bin/pip install --upgrade .` (3.14+ 는 editable 스킵, shim 그대로)
+
+4. 업데이트 후 새 `version`이 latest와 일치하는지 재확인. 일치하면 Step 1로 진행. 불일치면 사용자에게 수동 업데이트 안내 출력 후 그래도 Step 1 진행.
+
+**경계**:
+- 버전 비교 실패(curl 에러, 파싱 에러)는 무조건 스킵. 절대 Step 1을 차단하지 않음.
+- 사용자에게 묻지 않고 강제로 force-reinstall 하지 않음 — pipx `--force`도 신버전이 detected 되었을 때만.
 
 ---
 

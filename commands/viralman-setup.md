@@ -1,6 +1,6 @@
 ---
-description: Single entry point for viralman — bootstraps the package itself if not installed (clone, venv, flask, shim), then walks the user through saving only the channel(s) they need (gitmail / twitter / reddit / linkedin). Plain-text token paste allowed with a security warning; recommended path is `read -s`.
-allowed-tools: Read, Bash(./scripts/save_creds.py:*), Bash(./scripts/lib/github_search.py:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/check_creds.py:*)
+description: Single entry point for viralman — bootstraps the package itself if not installed (clone, venv, flask, shim), auto-updates to the latest published version when a newer one is available, then walks the user through saving only the channel(s) they need (gitmail / twitter / reddit / linkedin). Plain-text token paste allowed with a security warning; recommended path is `read -s`.
+allowed-tools: Read, Bash(./scripts/save_creds.py:*), Bash(./scripts/lib/github_search.py:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/check_creds.py:*), Bash(curl:*), Bash(python3:*), Bash(git pull:*), Bash(pipx:*), Bash(.venv/bin/pip:*), Bash(pipx list:*)
 argument-hint: "[gitmail|twitter|reddit|linkedin] [--plain] [--check] [--reinstall]"
 ---
 

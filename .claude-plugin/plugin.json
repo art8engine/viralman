@@ -1,6 +1,6 @@
 {
   "name": "viralman",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local dashboard + multi-platform poster + gitmail outreach. Writes non-AI-feeling promo posts for Reddit / X / LinkedIn, and runs targeted email campaigns to stargazers of similar GitHub repos — all under the user's own accounts with explicit permission.",
   "author": {
     "name": "viralman contributors"
@@ -21,7 +21,5 @@
     "outreach",
     "dashboard"
   ],
-  "skills": "./skills/",
-  "commands": "./commands/",
-  "agents": "./agents/"
+  "skills": "./skills/"
 }

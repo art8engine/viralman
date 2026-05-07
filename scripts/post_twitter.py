@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
-from creds import load as load_creds, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+from creds import load as load_creds, read_body_from_stdin_or_arg, save_many, CredsError  # noqa: E402
 from compose_urls import twitter_intent  # noqa: E402
 
 
@@ -111,17 +111,15 @@ def _refresh_oauth2(creds: dict) -> str | None:
     if not new_bearer:
         return None
 
-    saver = Path(__file__).parent / "save_creds.py"
-    subprocess.run(
-        [sys.executable, str(saver), "--stdin", "TWITTER_OAUTH2_BEARER"],
-        input=new_bearer, text=True, check=False, timeout=10,
-    )
-    if new_refresh:
-        subprocess.run(
-            [sys.executable, str(saver), "--stdin", "TWITTER_OAUTH2_REFRESH"],
-            input=new_refresh, text=True, check=False, timeout=10,
-        )
+    to_save: dict = {"TWITTER_OAUTH2_BEARER": new_bearer}
+    if new_refresh and new_refresh != rt:
+        to_save["TWITTER_OAUTH2_REFRESH"] = new_refresh
+    try:
+        save_many(to_save)
+    except Exception as e:
+        print(f"WARN: persisting rotated tokens failed: {e}", file=sys.stderr)
 
+    creds.update(to_save)
     return new_bearer
 
 

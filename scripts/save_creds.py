@@ -19,56 +19,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import sys
-import tempfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict
 
+sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
-CREDS_DIR = Path.home() / ".viralman"
-ENV_PATH = CREDS_DIR / ".env"
-
-
-def _parse_existing(path: Path) -> Dict[str, str]:
-    if not path.exists():
-        return {}
-    out: Dict[str, str] = {}
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" not in line:
-            continue
-        k, _, v = line.partition("=")
-        v = v.strip()
-        if v and v[0] == v[-1] and v[0] in ('"', "'"):
-            v = v[1:-1]
-        out[k.strip()] = v
-    return out
-
-
-def _atomic_write(path: Path, data: str) -> None:
-    fd, tmp = tempfile.mkstemp(prefix=".env.", dir=str(path.parent))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(data)
-        os.chmod(tmp, 0o600)
-        os.replace(tmp, path)
-    except Exception:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
-
-
-def _serialize(d: Dict[str, str]) -> str:
-    lines = ["# viralman credentials — do not commit"]
-    for k in sorted(d):
-        v = d[k]
-        if v == "":
-            continue
-        lines.append(f'{k}="{v}"')
-    return "\n".join(lines) + "\n"
+from creds import ENV_PATH, _parse_env, save_many  # noqa: E402
 
 
 def main() -> int:
@@ -97,20 +54,13 @@ def main() -> int:
     )
     args = p.parse_args()
 
-    CREDS_DIR.mkdir(mode=0o700, exist_ok=True)
-    try:
-        os.chmod(CREDS_DIR, 0o700)
-    except PermissionError:
-        pass
-
-    existing = _parse_existing(ENV_PATH)
-
     if args.show_keys:
-        for k in sorted(existing):
-            print(k)
+        if ENV_PATH.exists():
+            for k in sorted(_parse_env(ENV_PATH.read_text(encoding="utf-8"))):
+                print(k)
         return 0
 
-    updates: List[Tuple[str, str]] = []
+    updates: Dict[str, str] = {}
 
     for pair in args.set:
         if "=" not in pair:
@@ -121,7 +71,7 @@ def main() -> int:
         if not k.replace("_", "").isalnum() or not k.isupper():
             print(f"ERROR: key must be UPPER_SNAKE_CASE, got: {k}", file=sys.stderr)
             return 2
-        updates.append((k, v))
+        updates[k] = v
 
     if args.stdin:
         k = args.stdin.strip()
@@ -132,23 +82,16 @@ def main() -> int:
         if not v:
             print(f"ERROR: empty value for {k}", file=sys.stderr)
             return 2
-        updates.append((k, v))
-
-    for k in args.unset:
-        existing.pop(k, None)
-
-    for k, v in updates:
-        existing[k] = v
+        updates[k] = v
 
     if not updates and not args.unset:
         print("ERROR: nothing to do — pass --set or --stdin or --unset", file=sys.stderr)
         return 2
 
-    _atomic_write(ENV_PATH, _serialize(existing))
+    save_many(updates, unset=args.unset)
 
-    saved_keys = [k for k, _ in updates]
-    if saved_keys:
-        print(f"saved: {', '.join(saved_keys)}")
+    if updates:
+        print(f"saved: {', '.join(updates.keys())}")
     if args.unset:
         print(f"removed: {', '.join(args.unset)}")
     return 0

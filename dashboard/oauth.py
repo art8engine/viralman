@@ -36,9 +36,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS / "lib"))
 
-from creds import load as load_creds, CredsError  # noqa: E402
-
-import subprocess  # noqa: E402
+from creds import load as load_creds, save_many, CredsError  # noqa: E402
 
 
 CALLBACK_PATH = "/oauth/{platform}/callback"
@@ -49,12 +47,7 @@ def _build_redirect(platform: str, request_root: str) -> str:
 
 
 def _save_creds(updates: Dict[str, str]) -> None:
-    """Save via save_creds.py so the file mode and atomic write are consistent."""
-    for key, value in updates.items():
-        cmd = [sys.executable, str(SCRIPTS / "save_creds.py"),
-                "--stdin", key]
-        subprocess.run(cmd, input=value, text=True, capture_output=True,
-                        cwd=str(REPO_ROOT), timeout=10, check=False)
+    save_many(updates)
 
 
 def _http_post_form(url: str, data: dict, headers: dict | None = None,

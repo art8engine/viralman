@@ -327,17 +327,27 @@ _EMAIL_SYS = (
     "2. BODY — FIVE one-sentence paragraphs. Every paragraph is exactly ONE "
     "sentence. Every paragraph is separated from the next by an EMPTY line "
     "(\\n\\n — that is two literal newline characters). Order:\n"
-    "   - Paragraph 1 (opening greeting + WHY this email + product name):\n"
-    "     Korean: '안녕하세요, 저희 <카테고리> <프로젝트 이름> 도구를 "
-    "     알려드리고자 메일을 보냈습니다.'\n"
-    "     English: 'Hi, we're reaching out to share our <category> <product name>.'\n"
-    "     中文: '您好，我们想向您介绍我们的<类别>项目 <product name>。'\n"
-    "     日本語: 'こんにちは、私たちの<カテゴリ> <product name> をご紹介したく "
-    "     メールいたしました。'\n"
+    "   - Paragraph 1 (starred-repo opener + WHY this email + product name "
+    "     in a single sentence):\n"
+    "     Korean: '안녕하세요, <starred_repo> 에 github star 하신 걸 보고 "
+    "     비슷한 결의 프로젝트에 관심이 있으실 것 같아 저희 <카테고리> "
+    "     <프로젝트 이름> 을 알려드리고자 메일을 보냈습니다.'\n"
+    "     English: 'Hi, I noticed you starred <starred_repo>, and figured a "
+    "     similar tool might be up your alley, so we're reaching out to share "
+    "     our <category> <product name>.'\n"
+    "     中文: '您好，我看到您给 <starred_repo> 加了 star，觉得类似的项目可能 "
+    "     也合您的兴趣，所以我们想向您介绍我们的<类别>项目 <product name>。'\n"
+    "     日本語: 'こんにちは、<starred_repo> をスターしていただいているのを "
+    "     拝見し、類似のプロジェクトにも興味があるかと思い、私たちの<カテゴリ> "
+    "     <product name> をご紹介したくメールいたしました。'\n"
     "     RULES:\n"
-    "     - Use 1st-person plural ('저희' / 'we' / '我们' / '私たち') even for "
-    "       solo makers — never '저' / 'I' / '我' / '私' in this paragraph.\n"
-    "     - The project name MUST appear verbatim in this single sentence.\n"
+    "     - The starred_repo string (provided in the user prompt as the "
+    "       'Recipient previously starred' field) MUST appear verbatim in this "
+    "       single sentence. This is a fixed personalization opener — "
+    "       non-negotiable.\n"
+    "     - Use 1st-person plural ('저희' / 'we' / '我们' / '私たち') for the "
+    "       maker side — never '저' / 'I' / '我' / '私' in this paragraph.\n"
+    "     - The project name MUST also appear verbatim in this single sentence.\n"
     "     - Korean ending MUST be '알려드리고자 메일을 보냈습니다' (not "
     "       '알려드리려고 메일 보냈습니다' or other softer variants).\n"
     "     - 카테고리 / category = '오픈소스' / 'open-source' / 'CLI' / 'SaaS' / "
@@ -369,9 +379,9 @@ _EMAIL_SYS = (
     "  blocks even if they read naturally as one thought.\n"
     "- Body length: 70–140 words total. Brevity over completeness.\n\n"
     "HARD CONSTRAINTS:\n"
-    "- DO NOT mention or hint at the recipient's starred repo anywhere "
-    "  (subject or body). The starred-repo info is INTERNAL targeting "
-    "  context only — pretend it is not part of the email.\n"
+    "- The starred_repo string MUST appear in Paragraph 1, verbatim. It must "
+    "  NOT appear in the subject or in any other paragraph — only as the "
+    "  opener in Paragraph 1.\n"
     "- DO NOT ask any feedback-fishing question ('what's been frustrating?', "
     "  'would love your input?', 'how do you handle X?').\n"
     "- DO NOT include command names, version numbers, regression-test "
@@ -392,13 +402,15 @@ What it does: {project_pitch}
 Repo URL: {project_url}
 
 Recipient handle: @{login}
-[Internal targeting note — DO NOT surface this in the body or subject]
-  Recipient previously starred a similar project: {starred_repo}
+Recipient previously starred: {starred_repo}
+  (This is a fixed personalization opener. The exact string above MUST appear
+  verbatim in Paragraph 1 of the body. Do not paraphrase, translate, or
+  abbreviate it.)
 
 Write the email. Output ONLY JSON:
 {{
-  "subject": "<<= 60 chars, greeting + single benefit sentence, plain Korean by default, no clickbait, no emoji, no '!'>",
-  "body": "<plaintext, 70-140 words, FIVE one-sentence paragraphs separated by blank lines (\\n\\n between each), follows the STRUCTURE in the system prompt; do NOT mention the starred repo>"
+  "subject": "<<= 60 chars, greeting + single benefit sentence, plain Korean by default, no clickbait, no emoji, no '!', do NOT mention the starred repo here>",
+  "body": "<plaintext, 70-140 words, FIVE one-sentence paragraphs separated by blank lines (\\n\\n between each), follows the STRUCTURE in the system prompt; the starred_repo string MUST appear verbatim in Paragraph 1>"
 }}"""
 
 

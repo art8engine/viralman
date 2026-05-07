@@ -47,7 +47,16 @@ viralman                 # http://localhost:8765 자동으로 열림
 
 ### 방법 1 — Claude Code 플러그인 (권장)
 
-Claude Code 안에서 자연어로 모든 것을 처리하고 싶은 분.
+Claude Code 안에서 자연어로 모든 것을 처리하고 싶은 분께 권장드립니다.
+
+```bash
+git clone https://github.com/art8engine/viralman
+cd viralman
+claude plugin marketplace add ./
+claude plugin install viralman
+```
+
+또는 클론하지 않고 GitHub에서 바로 설치하셔도 됩니다:
 
 ```bash
 claude plugin marketplace add https://github.com/art8engine/viralman

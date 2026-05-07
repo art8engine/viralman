@@ -50,6 +50,15 @@ Three paths — pick the one that fits how you work.
 Natural language inside Claude Code — no commands to remember.
 
 ```bash
+git clone https://github.com/art8engine/viralman
+cd viralman
+claude plugin marketplace add ./
+claude plugin install viralman
+```
+
+Or install straight from GitHub without cloning:
+
+```bash
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```

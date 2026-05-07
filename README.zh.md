@@ -50,6 +50,15 @@ viralman                 # 自动打开 http://localhost:8765
 适合想在 Claude Code 里用自然语言全程操作的用户。
 
 ```bash
+git clone https://github.com/art8engine/viralman
+cd viralman
+claude plugin marketplace add ./
+claude plugin install viralman
+```
+
+或者不克隆、直接从 GitHub 安装：
+
+```bash
 claude plugin marketplace add https://github.com/art8engine/viralman
 claude plugin install viralman
 ```

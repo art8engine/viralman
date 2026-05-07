@@ -124,8 +124,10 @@ Auto-trigger on:
   [--seed-repos "$SEEDS"] \
   [--keywords "$KW"] \
   --provider $PROVIDER \
-  --output /tmp/gitmail_recipients.json
+  > /tmp/gitmail_recipients.json
 ```
+
+> `recipients` writes JSON to stdout. Redirect it to a file for the next step.
 
 결과를 사용자에게 요약 (최대 10명 미리보기):
 
@@ -150,7 +152,10 @@ N명 수집했습니다. 미리보기:
 
 ```bash
 ./scripts/gitmail.py send-from-recipients \
-  --recipients /tmp/gitmail_recipients.json \
+  --recipients-file /tmp/gitmail_recipients.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
   --tone "$TONE" \
   --emphasis "$EMPHASIS" \
   --provider $PROVIDER \
@@ -172,7 +177,10 @@ N명 수집했습니다. 미리보기:
 
 ```bash
 ./scripts/gitmail.py send-from-recipients \
-  --recipients /tmp/gitmail_recipients.json \
+  --recipients-file /tmp/gitmail_recipients.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
   --tone "$TONE" \
   --emphasis "$EMPHASIS" \
   --provider $PROVIDER

@@ -288,47 +288,6 @@ def resolve_user_email(
     return None
 
 
-def collect_recipients(
-    repos: List[Dict[str, object]],
-    *,
-    max_users: int,
-    token: Optional[str] = None,
-    on_progress=None,
-) -> List[Dict[str, str]]:
-    """Walk the given repos round-robin, collect up to `max_users` (login, email)."""
-    seen_logins: set[str] = set()
-    out: List[Dict[str, str]] = []
-    iterators = [iter_stargazers(r["full_name"], max_users=max_users * 5, token=token)
-                 for r in repos]
-
-    while iterators and len(out) < max_users:
-        next_iters = []
-        for it in iterators:
-            try:
-                user = next(it)
-            except StopIteration:
-                continue
-            login = user["login"]
-            if login in seen_logins:
-                next_iters.append(it)
-                continue
-            seen_logins.add(login)
-            email = resolve_user_email(login, token=token)
-            if email:
-                out.append({"login": login, "email": email,
-                            "profile": user.get("html_url", "")})
-                if on_progress:
-                    on_progress({"event": "recipient",
-                                 "count": len(out),
-                                 "target": max_users,
-                                 "login": login})
-                if len(out) >= max_users:
-                    break
-            next_iters.append(it)
-        iterators = next_iters
-    return out
-
-
 # --------------------------------------------------------------------------- #
 # Smoke-test CLI                                                              #
 # --------------------------------------------------------------------------- #

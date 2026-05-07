@@ -452,72 +452,46 @@ def compose_email(
             f"{system_prompt}\n\n"
             f"Lead with these emphasis points: {emphasis}. The first 1-2 sentences should anchor on this."
         )
+    user_prompt = _EMAIL_USER_TMPL.format(
+        project_name=project_name,
+        project_pitch=project_pitch,
+        project_url=project_url or "(none)",
+        login=login,
+        starred_repo=starred_repo,
+    )
     raw = call_llm(
         creds,
         system=system_prompt,
-        user=_EMAIL_USER_TMPL.format(
-            project_name=project_name,
-            project_pitch=project_pitch,
-            project_url=project_url or "(none)",
-            login=login,
-            starred_repo=starred_repo,
-        ),
+        user=user_prompt,
         provider=provider,
         max_tokens=700,
     )
     data = _extract_json(raw)
+    if not data:
+        retry_user = (
+            user_prompt
+            + "\n\nIMPORTANT: Your previous reply did not contain valid JSON. "
+            "Reply with ONLY the JSON object — no preamble, no fences, no commentary."
+        )
+        try:
+            raw_retry = call_llm(
+                creds,
+                system=system_prompt,
+                user=retry_user,
+                provider=provider,
+                max_tokens=700,
+            )
+            data = _extract_json(raw_retry)
+        except Exception:
+            data = {}
+    if not data:
+        raise RuntimeError("LLM returned no parseable JSON for email body after retry")
     subject = (data.get("subject") or "").strip().strip('"')
     body = (data.get("body") or "").strip()
     if not subject:
         subject = f"Quick note about {project_name}"
     if not body:
-        body = raw.strip()
+        raise RuntimeError("LLM returned JSON without a body field")
     return {"subject": subject[:160], "body": body}
 
 
-# --------------------------------------------------------------------------- #
-# CLI smoke test                                                              #
-# --------------------------------------------------------------------------- #
-
-
-def _main() -> int:
-    import argparse
-    p = argparse.ArgumentParser()
-    sub = p.add_subparsers(dest="cmd", required=True)
-    a = sub.add_parser("analyse")
-    a.add_argument("description")
-    a.add_argument("--provider", default=None)
-    e = sub.add_parser("email")
-    e.add_argument("--project", required=True)
-    e.add_argument("--pitch", required=True)
-    e.add_argument("--url", default="")
-    e.add_argument("--login", required=True)
-    e.add_argument("--starred", required=True)
-    e.add_argument("--provider", default=None)
-    args = p.parse_args()
-
-    sys.path.insert(0, str(Path(__file__).parent))
-    from creds import load as load_creds
-    creds = load_creds()
-
-    if args.cmd == "analyse":
-        print(json.dumps(analyse_project_llm(creds, args.description,
-                                             provider=args.provider), indent=2))
-        return 0
-    if args.cmd == "email":
-        print(json.dumps(
-            compose_email(creds,
-                          project_name=args.project,
-                          project_pitch=args.pitch,
-                          project_url=args.url,
-                          login=args.login,
-                          starred_repo=args.starred,
-                          provider=args.provider),
-            indent=2,
-        ))
-        return 0
-    return 2
-
-
-if __name__ == "__main__":
-    raise SystemExit(_main())

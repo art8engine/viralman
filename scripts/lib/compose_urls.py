@@ -22,6 +22,3 @@ def reddit_submit(subreddit: str, title: str, body: str) -> str:
     return f"https://www.reddit.com/r/{sub}/submit?{qs}"
 
 
-def linkedin_share(text: str) -> str:
-    encoded = urllib.parse.quote(text, safe="")
-    return f"https://www.linkedin.com/feed/?shareActive=true&text={encoded}"

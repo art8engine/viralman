@@ -44,17 +44,16 @@ def post_via_api(creds: dict, body: str) -> str | None:
         return None
 
     parent_id = None
-    last_id = None
+    root_id = None
     for tweet in parts:
         resp = client.create_tweet(text=tweet, in_reply_to_tweet_id=parent_id)
-        last_id = resp.data["id"]
-        if parent_id is None:
-            parent_id = last_id
-        else:
-            parent_id = last_id
+        tid = resp.data["id"]
+        if root_id is None:
+            root_id = tid
+        parent_id = tid
 
     handle = creds.get("TWITTER_HANDLE", "i")
-    return f"https://twitter.com/{handle}/status/{parent_id}"
+    return f"https://twitter.com/{handle}/status/{root_id}"
 
 
 def post_via_compose(body: str) -> str:

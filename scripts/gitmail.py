@@ -657,7 +657,7 @@ def main() -> int:
     sfr.add_argument("--recipients-file", default=None,
                       help="Path to recipients JSON. Use --recipients-stdin instead "
                            "to read from stdin.")
-    sfr.add_argument("--recipients-stdin", default=None, nargs="?", const="-",
+    sfr.add_argument("--recipients-stdin", action="store_true",
                       help="Read recipients JSON from stdin.")
     sfr.add_argument("--project-name", default="my-project")
     sfr.add_argument("--description", default="")
@@ -674,8 +674,7 @@ def main() -> int:
     if args.cmd == "run":
         return cmd_run(args)
     if args.cmd == "analyse":
-        ns = argparse.Namespace(description=args.description, provider=args.provider)
-        return cmd_analyse(ns)
+        return cmd_analyse(args)
     if args.cmd == "recipients":
         return cmd_recipients(args)
     if args.cmd == "send-from-recipients":

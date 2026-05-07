@@ -61,7 +61,7 @@ channel. Run once per channel you want to activate.
    d. `~/.claude/plugins/cache/*/viralman/*/.venv/bin/python` — 가장 최신 버전
    e. **모두 없음** → 부트스트랩 필요
 
-2. **부트스트랩이 필요하면** — `/viralman-install` 스킬의 절차를 in-line으로 진행:
+2. **부트스트랩이 필요하면** — 다음 절차를 그 자리에서 진행합니다:
    - REPO 위치 결정 (CWD git toplevel → plugin cache → `--path` → `~/viralman` clone)
    - `python3 -m venv .venv` (Python 3.10+ 확인)
    - `.venv/bin/pip install --upgrade pip`
@@ -168,8 +168,6 @@ Verify end-to-end: `./scripts/gitmail.py analyse "A quick test project"`.
 Done: "gitmail is hooked up — go to `http://localhost:8765/gitmail` and start
 a dry-run job."
 
-이 카테고리만 다시 설정할 때는 `/viralman-login-gitmail`도 동일한 절차를 안내합니다.
-
 ---
 
 ## Step 3b — twitter branch
@@ -196,8 +194,6 @@ Common failures: `403` = still Read-only (regenerate tokens); `401` = tokens
 pre-dated the permission change; `429` = monthly free-tier cap hit.
 
 Done: "X is hooked up. `/viral --only x` now posts via the API."
-
-이 카테고리만 다시 설정할 때는 `/viralman-login-twitter`도 동일한 절차를 안내합니다.
 
 ---
 
@@ -234,8 +230,6 @@ Common failures: `401`/`invalid_grant` = whitespace in secret (re-run `read -s`)
 wrong app type, or 2FA active.
 
 Done: "Reddit is hooked up. `/viral --only reddit --subreddit <name>` will post."
-
-이 카테고리만 다시 설정할 때는 `/viralman-login-reddit`도 동일한 절차를 안내합니다.
 
 ---
 
@@ -311,8 +305,6 @@ invalid_token` = token expired, re-run OAuth steps; `403 ACCESS_DENIED` =
 
 Done: "LinkedIn is hooked up. Token expires in 60 days — re-run
 `/viralman-setup linkedin` (skip app setup, just redo OAuth steps) to refresh."
-
-이 카테고리만 다시 설정할 때는 `/viralman-login-linkedin`도 동일한 절차를 안내합니다.
 
 ---
 

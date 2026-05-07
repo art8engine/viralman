@@ -93,8 +93,10 @@ GitHub URL 또는 3~5줄 설명을 주세요.
   [--seed-repos "$SEEDS"] \
   [--keywords "$KW"] \
   --provider $PROVIDER \
-  --output /tmp/gitmail_recipients.json
+  > /tmp/gitmail_recipients.json
 ```
+
+> `recipients` prints JSON to stdout. Redirect (`>`) it to a file you can pass to the next step.
 
 결과 JSON을 읽어 사용자에게 다음 형식으로 요약한다:
 
@@ -124,7 +126,10 @@ N명 수집했습니다. 미리보기:
 
 ```bash
 ./scripts/gitmail.py send-from-recipients \
-  --recipients /tmp/gitmail_recipients.json \
+  --recipients-file /tmp/gitmail_recipients.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
   --tone "$TONE" \
   --emphasis "$EMPHASIS" \
   --provider $PROVIDER \
@@ -153,7 +158,10 @@ N명 수집했습니다. 미리보기:
 
 ```bash
 ./scripts/gitmail.py send-from-recipients \
-  --recipients /tmp/gitmail_recipients.json \
+  --recipients-file /tmp/gitmail_recipients.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
   --tone "$TONE" \
   --emphasis "$EMPHASIS" \
   --provider $PROVIDER

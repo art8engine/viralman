@@ -77,18 +77,10 @@ subsequent keys in the same session.
 
 ## Step 2 — run the channel-specific setup
 
-Branch on the chosen category. Follow the procedure from the corresponding skill
-file exactly — see `skills/viralman-setup/SKILL.md` for the full per-channel
-steps.
+Branch on the chosen category and follow the matching section in
+`skills/viralman-setup/SKILL.md` (Step 3a/3b/3c/3d). The skill file is the
+single source of truth for per-channel procedures.
 
-| Category  | Skill reference                                  |
-|-----------|--------------------------------------------------|
-| gitmail   | `skills/viralman-login-gitmail/SKILL.md`         |
-| twitter   | `skills/viralman-login-twitter/SKILL.md`         |
-| reddit    | `skills/viralman-login-reddit/SKILL.md`          |
-| linkedin  | `skills/viralman-login-linkedin/SKILL.md`        |
-
-Differences from the individual skills:
 - Plain-text `--plain` mode is accepted here (with the warning above).
 - Only the chosen channel is touched. Never ask about or modify credentials for
   other channels during this run.

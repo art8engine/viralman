@@ -217,57 +217,7 @@ def test_preview_reddit_strips_r_prefix(client):
 
 
 # ---------------------------------------------------------------------------
-# 12. Gitmail start validates description
-# ---------------------------------------------------------------------------
-
-
-def test_gitmail_start_validates_description(client, monkeypatch):
-    import dashboard.api as _api
-
-    # Patch _start_gitmail_job so no subprocess is spawned
-    monkeypatch.setattr(_api, "_start_gitmail_job", lambda job: None)
-
-    resp = client.post("/api/gitmail/start", json={"description": ""})
-    assert resp.status_code == 400
-    assert resp.get_json()["ok"] is False
-
-
-# ---------------------------------------------------------------------------
-# 13. Gitmail start validates max_users range
-# ---------------------------------------------------------------------------
-
-
-def test_gitmail_start_validates_max_users_range(client, monkeypatch):
-    import dashboard.api as _api
-
-    monkeypatch.setattr(_api, "_start_gitmail_job", lambda job: None)
-
-    # max_users=0: the API does `int(data.get("max_users") or 100)` so 0 is
-    # treated as falsy and defaults to 100, which is valid -> 200
-    resp = client.post(
-        "/api/gitmail/start",
-        json={"description": "A cool project", "max_users": 0},
-    )
-    assert resp.status_code == 200
-
-    # max_users=10001 -> 400 (exceeds upper bound of 10000)
-    resp = client.post(
-        "/api/gitmail/start",
-        json={"description": "A cool project", "max_users": 10001},
-    )
-    assert resp.status_code == 400
-
-    # max_users=100 -> 200
-    resp = client.post(
-        "/api/gitmail/start",
-        json={"description": "A cool project", "max_users": 100},
-    )
-    assert resp.status_code == 200
-    assert resp.get_json()["ok"] is True
-
-
-# ---------------------------------------------------------------------------
-# 14. Gitmail collect validates description
+# 12. Gitmail collect validates description
 # ---------------------------------------------------------------------------
 
 

@@ -1,20 +1,18 @@
 """JSON endpoints for the dashboard.
 
 Routes:
-  POST /api/preview/twitter   {body}                         -> validation + URL
-  POST /api/preview/reddit    {subreddit,title,body}         -> validation + URL
-  POST /api/post/twitter      {body}                         -> live URL or compose URL
-  POST /api/post/reddit       {subreddit,title,body,flair}   -> live URL
-  GET  /api/creds/status                                     -> per-platform status
-  POST /api/creds/manual      {key,value}                    -> non-secret save
-  POST /api/creds/secret      {key,value}                    -> secret save (note: still
-                                                                  goes via subprocess; the
-                                                                  value is held only in
-                                                                  this Python process)
-  POST /api/gitmail/start     {project_name,description,...} -> {job_id}
-  GET  /api/gitmail/status/<job_id>                          -> {status,events,summary}
-  POST /api/gitmail/cancel/<job_id>                          -> {ok}
-  GET  /api/gitmail/jobs                                     -> list
+  POST /api/preview/twitter         {body}                       -> validation + URL
+  POST /api/preview/reddit          {subreddit,title,body}       -> validation + URL
+  POST /api/post/twitter            {body}                       -> live URL or compose URL
+  POST /api/post/reddit             {subreddit,title,body,flair} -> live URL
+  GET  /api/creds/status                                         -> per-platform status
+  POST /api/creds/manual            {key,value}                  -> save (non-secret or secret)
+  POST /api/gitmail/collect         {description,...}            -> {job_id}    (recipients only)
+  POST /api/gitmail/send            {recipients,body,...}        -> {job_id}    (compose+send)
+  GET  /api/gitmail/status/<job_id>                              -> {status,events,summary}
+  POST /api/gitmail/cancel/<job_id>                              -> {ok}
+  POST /api/generate                {project,channels,...}       -> drafts per channel
+  POST /api/scrape/reddit-threads   {subreddits,keywords}        -> top threads
 
 Note on secrets: a browser-typed secret IS visible to this process. We mitigate
 by piping it straight into save_creds.py's stdin (so it never lands on the
@@ -25,12 +23,10 @@ remain the recommended path.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import threading
 import time
-import urllib.parse
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -47,10 +43,9 @@ import github_search  # noqa: E402
 import smtp_send  # noqa: E402
 from unsubscribe import (  # noqa: E402
     record_unsubscribe as _record_unsubscribe_lib,
-    record_token_email as _record_token_email_lib,
-    load_unsubscribed_emails as _load_unsubscribed_emails_lib,
-    unsubscribe_log_path as _unsubscribe_log_path_lib,
-    token_email_map_path as _token_email_map_path_lib,
+    record_token_email,
+    load_unsubscribed_emails,
+    token_email_map_path,
 )
 
 
@@ -65,7 +60,6 @@ class GitmailJob:
         self.args = args
         self.events: List[Dict[str, Any]] = []
         self.lock = threading.Lock()
-        self.proc: Optional[subprocess.Popen] = None
         self.status = "pending"
         self.started_at = time.time()
         self.ended_at: Optional[float] = None
@@ -85,15 +79,12 @@ class GitmailJob:
                 self.ended_at = time.time()
 
     def cancel(self) -> bool:
-        if self.proc and self.proc.poll() is None:
-            try:
-                self.proc.terminate()
-            except Exception:
-                return False
-            self.status = "cancelled"
-            self.ended_at = time.time()
-            return True
-        return False
+        """Cooperative cancel — collect/send loops check job.status each turn."""
+        if self.status in ("done", "error", "cancelled"):
+            return False
+        self.status = "cancelled"
+        self.ended_at = time.time()
+        return True
 
     def to_dict(self) -> Dict[str, Any]:
         with self.lock:
@@ -121,29 +112,13 @@ def record_unsubscribe(token: str) -> None:
     _record_unsubscribe_lib(token)
 
 
-def _unsubscribe_log_path() -> Path:
-    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
-    return _unsubscribe_log_path_lib()
-
-
-def _token_email_map_path() -> Path:
-    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
-    return _token_email_map_path_lib()
-
-
-def _record_token_email(token: str, email: str) -> None:
-    """Deprecated wrapper — delegates to scripts.lib.unsubscribe."""
-    _record_token_email_lib(token, email)
-
-
 def _load_unsubscribed_emails() -> set[str]:
-    """Resolve unsubscribed *emails* via the shared lib, plus any in-memory
-    UNSUBSCRIBES tokens that already have an email mapping on disk."""
-    base = _load_unsubscribed_emails_lib()
+    """Resolve unsubscribed *emails*: lib's on-disk join, plus any in-memory
+    UNSUBSCRIBES tokens that already have a token→email mapping on disk."""
+    base = load_unsubscribed_emails()
     if not UNSUBSCRIBES:
         return base
-    # In-memory tokens (from a hot route) need a token→email lookup
-    map_path = _token_email_map_path_lib()
+    map_path = token_email_map_path()
     if not map_path.exists():
         return base
     try:
@@ -196,8 +171,6 @@ def _run_post_script(script: str, args: List[str], stdin: str) -> Dict[str, Any]
 
 
 def _save_cred(key: str, value: str, *, secret: bool) -> Dict[str, Any]:
-    if not key.replace("_", "").isalnum() or not key.isupper():
-        return {"ok": False, "error": "key must be UPPER_SNAKE_CASE"}
     cmd = [sys.executable, str(SCRIPTS / "save_creds.py")]
     if secret:
         cmd += ["--stdin", key]
@@ -212,69 +185,6 @@ def _save_cred(key: str, value: str, *, secret: bool) -> Dict[str, Any]:
              "stderr": proc.stderr.strip()}
 
 
-def _start_gitmail_job(job: GitmailJob) -> None:
-    cmd = [
-        sys.executable, str(SCRIPTS / "gitmail.py"), "run",
-        "--description", job.args["description"],
-        "--project-name", job.args.get("project_name") or "my-project",
-        "--project-url", job.args.get("project_url") or "",
-        "--max-users", str(int(job.args.get("max_users") or 100)),
-        "--min-stars", str(int(job.args.get("min_stars") or 200)),
-        "--repo-limit", str(int(job.args.get("repo_limit") or 15)),
-        "--unsubscribe-base", job.args.get("unsubscribe_base") or "http://localhost:8765",
-    ]
-    if job.args.get("provider"):
-        cmd += ["--provider", job.args["provider"]]
-    if job.args.get("pitch"):
-        cmd += ["--pitch", job.args["pitch"]]
-    if job.args.get("reply_to"):
-        cmd += ["--reply-to", job.args["reply_to"]]
-    if job.args.get("template_only"):
-        cmd += ["--template-only"]
-    if job.args.get("dry_run"):
-        cmd += ["--dry-run"]
-
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(REPO_ROOT),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,
-    )
-    job.proc = proc
-    job.status = "running"
-
-    def reader(pipe, kind: str) -> None:
-        for line in pipe:
-            line = line.rstrip("\n")
-            if not line:
-                continue
-            if kind == "stdout":
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    event = {"event": "log", "msg": line}
-            else:
-                event = {"event": "stderr", "msg": line}
-            job.append(event)
-        pipe.close()
-
-    threading.Thread(target=reader, args=(proc.stdout, "stdout"),
-                      daemon=True).start()
-    threading.Thread(target=reader, args=(proc.stderr, "stderr"),
-                      daemon=True).start()
-
-    def waiter() -> None:
-        rc = proc.wait()
-        if job.status not in ("done", "error", "cancelled"):
-            job.status = "error" if rc else "done"
-            job.ended_at = time.time()
-            job.append({"event": "exit", "code": rc})
-
-    threading.Thread(target=waiter, daemon=True).start()
-
-
 # --------------------------------------------------------------------------- #
 # Status detection                                                            #
 # --------------------------------------------------------------------------- #
@@ -285,11 +195,7 @@ def _llm_draft_or_fallback(creds, lc, channel, project, keywords, intent, provid
     """Generate a draft via LLM; if creds missing, return a templated stub."""
     name = project.get("name") or "my-project"
     pitch = project.get("pitch") or project.get("desc", "")[:200]
-    sniffer = None
-    try:
-        from sniffer_check import check as sniffer
-    except ImportError:
-        pass
+    sniffer = sniff_check
 
     use_llm = any(creds.get(k) for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"))
     if use_llm:
@@ -575,7 +481,7 @@ def _run_send_job(job: "GitmailJob") -> None:
                 )
                 tok = preview.get("unsubscribe_token")
                 if tok:
-                    _record_token_email(tok, r["email"])
+                    record_token_email(tok, r["email"])
                 previews.append({**r, "subject": subject, "body": body,
                                   "preview_headers": preview["headers"]})
                 job.append({"event": "send_preview", "to": r["email"],
@@ -619,7 +525,7 @@ def _run_send_job(job: "GitmailJob") -> None:
                     sent += 1
                     tok = result.get("unsubscribe_token")
                     if tok:
-                        _record_token_email(tok, r["email"])
+                        record_token_email(tok, r["email"])
                     job.append({"event": "send_ok", "to": r["email"],
                                  "login": r.get("login", ""),
                                  "message_id": result.get("message_id", ""),
@@ -788,36 +694,7 @@ def register(app) -> None:
             cli += ["--flair", flair]
         return jsonify(_run_post_script("post_reddit.py", cli, body))
 
-    # ----- gitmail -----
-
-    @app.post("/api/gitmail/start")
-    def gitmail_start():
-        data = request.get_json(silent=True) or {}
-        if not (data.get("description") or "").strip():
-            return jsonify({"ok": False, "error": "description required"}), 400
-        max_users = int(data.get("max_users") or 100)
-        if max_users < 1 or max_users > 10000:
-            return jsonify({"ok": False, "error": "max_users must be 1..10000"}), 400
-        job_id = uuid.uuid4().hex[:12]
-        job = GitmailJob(job_id, {
-            "description": data["description"],
-            "project_name": data.get("project_name") or "my-project",
-            "project_url": data.get("project_url") or "",
-            "pitch": data.get("pitch") or "",
-            "max_users": max_users,
-            "min_stars": int(data.get("min_stars") or 200),
-            "repo_limit": int(data.get("repo_limit") or 15),
-            "provider": data.get("provider"),
-            "dry_run": bool(data.get("dry_run", True)),
-            "template_only": bool(data.get("template_only", False)),
-            "unsubscribe_base": data.get("unsubscribe_base")
-                or f"{request.url_root.rstrip('/')}",
-            "reply_to": data.get("reply_to"),
-        })
-        with JOBS_LOCK:
-            JOBS[job_id] = job
-        _start_gitmail_job(job)
-        return jsonify({"ok": True, "job_id": job_id})
+    # ----- gitmail status / cancel (shared by collect + send jobs) -----
 
     @app.get("/api/gitmail/status/<job_id>")
     def gitmail_status(job_id):
@@ -838,16 +715,6 @@ def register(app) -> None:
         if not job:
             return jsonify({"ok": False, "error": "no such job"}), 404
         return jsonify({"ok": job.cancel()})
-
-    @app.get("/api/gitmail/jobs")
-    def gitmail_jobs():
-        with JOBS_LOCK:
-            return jsonify({
-                "jobs": [{"id": j.id, "status": j.status,
-                           "started_at": j.started_at,
-                           "ended_at": j.ended_at}
-                          for j in JOBS.values()]
-            })
 
     # ----- generate (LLM-driven drafts for selected channels) -----
 

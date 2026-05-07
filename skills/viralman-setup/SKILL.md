@@ -100,7 +100,12 @@ channel. Run once per channel you want to activate.
    네트워크 실패 또는 4초 타임아웃이면 조용히 스킵(오프라인 환경일 수 있음).
 
 3. **버전이 다르면** — 사용자에게 한 줄 안내 후 install 타입에 맞는 업데이트 실행:
-   - 플러그인 설치: 직접 실행 불가. `/plugin update viralman` 슬래시 명령을 사용자에게 요청한 뒤 대기.
+   - 플러그인 설치: 직접 실행 불가. **사용자에게** 다음 두 슬래시 명령을 차례로 입력하도록 요청한 뒤 대기 (Claude Code에는 `/plugin update <name>` 단일 명령은 없습니다 — 반드시 marketplace 갱신 + reload 2단계).
+     ```
+     /plugin marketplace update viralman
+     /plugin install viralman
+     ```
+     그 다음 새 세션을 시작하거나 `/reload-plugins` (있으면) 로 적용.
    - pipx 설치: `pipx install --force git+https://github.com/art8engine/viralman`
    - 로컬 clone: `cd <repo> && git pull --ff-only && .venv/bin/pip install --upgrade .` (3.14+ 는 editable 스킵, shim 그대로)
 

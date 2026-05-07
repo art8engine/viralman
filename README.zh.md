@@ -45,6 +45,8 @@ viralman                 # 自动打开 http://localhost:8765
 
 三条路径。一般推荐路径 1；不使用 Claude Code 选路径 2；CI / 自动化选路径 3。
 
+> 您可以按照下面的手动设置步骤完成配置，但更推荐安装 Claude Code 插件（路径 1），让智能体直接帮您完成所有设置。
+
 ### 路径 1 —— Claude Code 插件（推荐）
 
 适合大多数 Claude Code 用户的 marketplace/plugin 安装方式。下面两行是 Claude Code 斜杠命令，请**逐行输入**（一次粘贴两行会失败）：

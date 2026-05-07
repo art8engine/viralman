@@ -45,6 +45,8 @@ viralman                 # opens http://localhost:8765
 
 Three paths. Path 1 is the easy default; Path 2 if you don't use Claude Code; Path 3 for CI / scripting.
 
+> You can follow the manual setup below, but installing the Claude Code plugin (Path 1) and asking the agent to walk you through setup is the recommended path.
+
 ### Path 1 — Claude Code plugin (recommended)
 
 Marketplace/plugin install (recommended for most Claude Code users). These are Claude Code slash commands — enter them one at a time (pasting both lines at once will fail):

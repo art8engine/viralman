@@ -1,5 +1,5 @@
 ---
-description: GitHub 스타게이저 콜드 메일 발송 — 사전 batch 질문(언어 / subject 스타일 / 타깃 / 인원) → 수신자 수집 → template-only dry-run으로 본문 1건 빠른 미리보기 → 사용자가 명시적으로 "발송해줘"라고 할 때만 실발송. 작동의 단일 진실 원천은 `skills/gitmail/SKILL.md`.
+description: Send personalized cold emails to GitHub stargazers of similar repos. Asks four upfront questions in one batch (language / subject style / targeting / recipient count), collects recipients, generates a fast template-only dry-run preview of the email body, and only sends for real after the user explicitly confirms. Single source of truth lives in `skills/gitmail/SKILL.md`.
 allowed-tools: Read, Bash(.venv/bin/python:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/save_creds.py:*), Bash(./bin/viralman:*), Bash(grep:*), Bash(tail:*), Bash(head:*), Bash(wc:*)
 argument-hint: "<project-url|description> [--tone '...'] [--emphasis '...'] [--seed-repos a/b,c/d] [--keywords k1,k2] [--max-users N] [--subject-style auto|headline|tag|simple]"
 ---

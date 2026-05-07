@@ -1,6 +1,6 @@
 ---
 name: gitmail
-description: GitHub 스타게이저에게 맞춤 이메일 발송 — 사용자에게 사전 batch 질문(언어 / subject 스타일 / 타깃 / 인원)을 한 번에 받고, 유사 repo 탐색 → 수신자 수집 → template-only dry-run으로 본문 1건 빠르게 미리보기 → 사용자가 명시적으로 "발송해줘" 라고 할 때만 실발송. Drive the gitmail outreach flow with an upfront batched-question UX, single-LLM-call dry-run preview, and explicit-confirmation gating before live SMTP send.
+description: Drive the gitmail outreach flow that sends personalized cold emails to GitHub stargazers of similar repos. Batches the user's four upfront decisions (language / subject style / targeting strategy / recipient count) into a single AskUserQuestion call before any heavy work runs, finds similar repos and collects recipient emails, renders a fast single-LLM-call dry-run preview of the email body, and gates live SMTP send strictly behind an explicit user confirmation.
 level: 3
 ---
 

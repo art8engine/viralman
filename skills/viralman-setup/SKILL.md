@@ -207,28 +207,80 @@ a dry-run job."
 
 ## Step 3b — twitter branch
 
-First ask whether they need API access or the compose-URL default is sufficient
-(one tweet at a time, no setup). If they choose the default, exit here.
+First ask whether they need API posting or the compose-URL default is enough
+(one tweet at a time, no setup). If they pick the default, exit here.
 
-For API setup: direct the user to `https://developer.twitter.com/en/portal/dashboard`.
-Create a project + app (`viralman-<handle>`), set permissions to **Read and
-write**, add callback `http://localhost:8765`, then generate Keys and tokens.
-**Regenerate Access Token after setting Read+Write** — pre-upgrade tokens are
-read-only.
+For API posting there are **two paths**. Recommend OAuth 2.0 unless the user
+already has 4 OAuth 1.0a keys saved.
 
-Save handle (non-secret): `./scripts/save_creds.py --set TWITTER_HANDLE=<handle>`
+### Default — OAuth 2.0 PKCE via dashboard (recommended)
 
-Save four secrets via `read -s` (one command per key):
-`TWITTER_API_KEY`, `TWITTER_API_SECRET`, `TWITTER_ACCESS_TOKEN`,
-`TWITTER_ACCESS_SECRET` — each piped to `./scripts/save_creds.py --stdin`.
+One browser click; refresh tokens auto-renew. No 4-token paste.
+
+1. **App setup** — go to `https://developer.twitter.com/en/portal/dashboard`,
+   create an app under any project. In the app's **User authentication
+   settings**: enable OAuth 2.0, type **Confidential client**, app permissions
+   **Read and write**, callback URL
+   `http://127.0.0.1:8765/oauth/twitter/callback`. Save Client ID + Client Secret.
+
+2. **Save the client values**:
+
+   ```bash
+   ./scripts/save_creds.py --set TWITTER_HANDLE=<handle>
+   ./scripts/save_creds.py --set TWITTER_OAUTH2_CLIENT_ID=<id>
+   read -rs -p 'TWITTER_OAUTH2_CLIENT_SECRET: ' s && printf '%s' "$s" | \
+     ./scripts/save_creds.py --stdin TWITTER_OAUTH2_CLIENT_SECRET; unset s; echo
+   ```
+
+3. **Run the OAuth flow** — start the dashboard locally, then open the start URL:
+
+   ```bash
+   .venv/bin/python -m dashboard.server --host 127.0.0.1 --port 8765 &
+   open http://127.0.0.1:8765/oauth/twitter/start
+   ```
+
+   X's "Authorize app" page → redirected back to `127.0.0.1:8765/oauth/twitter/callback`,
+   which exchanges the code, persists `TWITTER_OAUTH2_BEARER` and
+   `TWITTER_OAUTH2_REFRESH` to `~/.viralman/.env`, then renders a green
+   "connected" page.
+
+4. **Verify**:
+
+   ```bash
+   ./scripts/save_creds.py --show-keys | grep TWITTER_OAUTH2
+   ```
+
+   Expect 4 keys: `TWITTER_OAUTH2_CLIENT_ID`, `TWITTER_OAUTH2_CLIENT_SECRET`,
+   `TWITTER_OAUTH2_BEARER`, `TWITTER_OAUTH2_REFRESH`.
+
+`post_twitter.py` prefers the OAuth 2.0 bearer; on a 401 it auto-refreshes
+using the refresh token and persists the rotated pair.
+
+### Legacy — OAuth 1.0a 4-key (fallback)
+
+Keep this only if the user already has the 4 keys configured. New users should
+use OAuth 2.0 above.
+
+App permissions **Read and write**, generate Keys and tokens. **Regenerate the
+Access Token *after* setting Read+Write** — pre-upgrade tokens are read-only.
+
+```bash
+./scripts/save_creds.py --set TWITTER_HANDLE=<handle>
+# four secrets, each via read -s | save_creds.py --stdin:
+#   TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET
+```
 
 Verify: `./scripts/check_creds.py --platform twitter`
 → `twitter OK — @<handle> (id=...)`.
 
-Common failures: `403` = still Read-only (regenerate tokens); `401` = tokens
-pre-dated the permission change; `429` = monthly free-tier cap hit.
+### Common failures
 
-Done: "X is hooked up. `/viral --only x` now posts via the API."
+- `403` = app still Read-only (regenerate tokens / re-authorize).
+- `401` after a previous success → OAuth 2.0 refresh token expired or app
+  permissions revoked; re-run the OAuth flow above.
+- `429` = monthly free-tier cap.
+
+Done: "X is hooked up. `/viral --only x` posts via the v2 Tweets endpoint."
 
 ---
 
@@ -351,7 +403,7 @@ confirm that the expected keys for that channel are present:
 | Channel  | Required keys                                                            |
 |----------|--------------------------------------------------------------------------|
 | gitmail  | GITHUB_TOKEN, SMTP_HOST/PORT/SECURITY/USER/FROM/PASSWORD, + one LLM key |
-| twitter  | TWITTER_HANDLE, TWITTER_API_KEY/SECRET, TWITTER_ACCESS_TOKEN/SECRET      |
+| twitter  | TWITTER_HANDLE + (OAuth 2.0: TWITTER_OAUTH2_CLIENT_ID / CLIENT_SECRET / BEARER / REFRESH) **or** (legacy: TWITTER_API_KEY / SECRET / ACCESS_TOKEN / ACCESS_SECRET) |
 | reddit   | REDDIT_CLIENT_ID/SECRET, REDDIT_USERNAME, REDDIT_PASSWORD, USER_AGENT   |
 | linkedin | LINKEDIN_CLIENT_ID/SECRET, LINKEDIN_ACCESS_TOKEN, LINKEDIN_PERSON_URN   |
 

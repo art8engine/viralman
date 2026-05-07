@@ -43,105 +43,52 @@ viralman                 # http://localhost:8765 자동으로 열림
 
 ## 설치
 
-사용 방식에 맞게 3가지 진입 경로 중 하나를 고르세요.
+세 가지 경로가 있습니다. 일반적으로는 방법 1을 권장드리고, Claude Code를 안 쓰시면 방법 2, CI·자동화 용도라면 방법 3입니다.
 
 ### 방법 1 — Claude Code 플러그인 (권장)
 
-Claude Code 안에서 자연어로 모든 것을 처리하고 싶은 분께 권장드립니다.
+Claude Code 사용자 대부분에게 권장드리는 marketplace/plugin 설치입니다. 아래 두 줄은 Claude Code 슬래시 명령이라 **한 줄씩 따로 입력**해 주세요. (두 줄을 한 번에 붙여넣으면 실패합니다.)
+
+```
+/plugin marketplace add https://github.com/art8engine/viralman
+```
+
+이어서:
+
+```
+/plugin install viralman
+```
+
+레포를 이미 로컬에 클론해 두셨다면 URL 대신 `./` 도 됩니다:
+
+```
+/plugin marketplace add ./
+```
+
+설치 후에는 명령어를 외우실 필요 없이 그냥 자연어로 말씀하시면 됩니다 — `"대시보드 띄워줘"`, `"viralman 셋업해줘"`, `"async-profiler 스타거한테 메일 보내줘"` 처럼요. 에이전트가 알아서 `/dashboard`, `/viralman-setup`, `/gitmail`, `/viral` 중 맞는 명령을 실행합니다. 발송 직전에는 (1) 언어 (2) subject 스타일 (3) 최종 OK 순서로 확인해 드립니다.
+
+### 방법 2 — pipx 설치 (Claude Code 불필요)
+
+Claude Code 없이 로컬 대시보드 + CLI만 쓰고 싶으시다면:
 
 ```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-claude plugin marketplace add ./
-claude plugin install viralman
+pipx install git+https://github.com/art8engine/viralman
+viralman   # → http://localhost:8765
 ```
 
-또는 클론하지 않고 GitHub에서 바로 설치하셔도 됩니다:
+`pipx` 가 격리된 venv를 만들어 `viralman` 명령을 `$PATH` 에 자동 등록해 줍니다. 이미 venv를 쓰고 계시면 `pip install git+...` 도 동일하게 동작합니다. 대시보드 4탭(Twitter / Reddit / Gitmail / Setup)에서 모든 작업이 가능하며, 슬래시 명령은 Claude Code가 있어야 동작합니다.
+
+### 방법 3 — 클론 후 직접 실행 (CI / headless / 자동화)
+
+스크립트나 CI 파이프라인에서 명시적 인자로 호출하시는 경우:
 
 ```bash
-claude plugin marketplace add https://github.com/art8engine/viralman
-claude plugin install viralman
+git clone https://github.com/art8engine/viralman && cd viralman
+pip install .
+./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
 ```
 
-명령어 안 외워도 됩니다 — 그냥 말하면 됩니다:
-
-```
-"viralman 셋업해줘"          → /viralman-setup 발화. Step 0이 venv/flask/shim 자동 부트스트랩,
-                               그 다음 원하는 채널 자격증명 1개 저장.
-"대시보드 띄워줘"             → /dashboard → http://localhost:8765
-"이 프로젝트 홍보메일 보내줘"  → /gitmail 5단계 인터랙티브 흐름 시작
-"AI 같지 않게 트윗 써줘"      → /viral
-```
-
-발송 직전에 에이전트가 (1) 언어 (2) subject 스타일 (3) 최종 OK 차례로 물어봅니다.
-
-### 방법 2 — 로컬 CLI / 대시보드 (Python 직접)
-
-Claude Code 없이 viralman만 쓰거나, 대시보드 웹 UI를 띄우고 싶은 분.
-
-```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-python3 -m venv .venv
-.venv/bin/pip install flask
-.venv/bin/pip install -e .   # Python ≤ 3.13만. 3.14+이면 이 줄 스킵 (shim이 dispatch)
-
-# 어디서든 viralman으로 부르고 싶으면 shim 한 줄 (선택)
-mkdir -p ~/.local/bin
-cat > ~/.local/bin/viralman <<'SH'
-#!/usr/bin/env bash
-exec "$HOME/path/to/viralman/.venv/bin/python" "$HOME/path/to/viralman/bin/viralman" "$@"
-SH
-chmod +x ~/.local/bin/viralman
-```
-
-> **Python 3.14**: setuptools editable install이 쓰는 실행 가능한 `.pth` 파일을 3.14가 막아놨다. 위 shim이 권장 경로.
-
-**첫 사용:**
-
-```bash
-viralman                                       # 대시보드 → http://localhost:8765
-./scripts/save_creds.py --set GITHUB_TOKEN=... # 자격증명 저장
-```
-
-대시보드 4탭(Twitter / Reddit / Gitmail / Setup)에서 모든 작업 진행. 슬래시 명령은 Claude Code가 있어야 사용 가능.
-
-### 방법 3 — 스크립트 직접 호출 (자동화 / CI / headless)
-
-대시보드·Claude Code 없이 명시적 인자로 스크립트만 돌리고 싶은 분. CI 파이프라인에서 사용 가능.
-
-**설치**: 방법 2와 동일 (git clone + venv + flask + 패키지). shim은 선택.
-
-**자격증명 저장:**
-
-```bash
-read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
-# SMTP 등도 동일 패턴
-./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
-```
-
-**gitmail 2-phase 흐름:**
-
-```bash
-# Phase 1: 수신자 수집 (시드 repo 직접 지정 또는 키워드)
-./scripts/gitmail.py recipients \
-  --seed-repos owner1/repo1,owner2/repo2 \
-  --max-users 100 > recipients.json
-
-# Phase 2: 톤·강조 반영 dry-run → 검토 → 실발송
-./scripts/gitmail.py send-from-recipients \
-  --recipients-file recipients.json \
-  --project-name myproj \
-  --description "..." \
-  --tone "..." \
-  --emphasis "..." \
-  --subject-style headline \
-  --dry-run
-
-# 검토 OK이면 --dry-run 빼고 다시 실행
-```
-
-한방 실행: `./scripts/gitmail.py run --description "..." --max-users 100 --dry-run`
+전체 gitmail / viral 플래그 목록은 아래 [사용](#사용-예시) 섹션을 참고해 주세요.
 
 ## 사용 예시
 

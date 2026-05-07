@@ -43,109 +43,52 @@ viralman                 # 自动打开 http://localhost:8765
 
 ## 安装
 
-根据使用方式选择以下三条路径之一。
+三条路径。一般推荐路径 1；不使用 Claude Code 选路径 2；CI / 自动化选路径 3。
 
 ### 路径 1 —— Claude Code 插件（推荐）
 
-适合想在 Claude Code 里用自然语言全程操作的用户。
+适合大多数 Claude Code 用户的 marketplace/plugin 安装方式。下面两行是 Claude Code 斜杠命令，请**逐行输入**（一次粘贴两行会失败）：
+
+```
+/plugin marketplace add https://github.com/art8engine/viralman
+```
+
+然后：
+
+```
+/plugin install viralman
+```
+
+如果已经把仓库克隆到本地，URL 可换成 `./`：
+
+```
+/plugin marketplace add ./
+```
+
+安装完成后，无需记任何命令——直接用自然语言说，例如 `"打开面板"`、`"配置 viralman"`、`"给 async-profiler 的 starrer 发邮件"`，代理会自动调用 `/dashboard`、`/viralman-setup`、`/gitmail`、`/viral`。发送前依次确认 (1) 语言 (2) 主题风格 (3) 最终确认。
+
+### 路径 2 —— pipx 安装（无需 Claude Code）
+
+如果只想用本地 Dashboard + 纯 CLI：
 
 ```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-claude plugin marketplace add ./
-claude plugin install viralman
+pipx install git+https://github.com/art8engine/viralman
+viralman   # → http://localhost:8765
 ```
 
-或者不克隆、直接从 GitHub 安装：
+`pipx` 会创建独立 venv 并把 `viralman` 命令注入到 `$PATH`。已有 venv 则 `pip install git+...` 同样可用。Dashboard 4 个标签页（Twitter / Reddit / Gitmail / Setup）涵盖全部操作；斜杠命令需要 Claude Code。
+
+### 路径 3 —— 克隆后直接运行（CI / headless / 自动化）
+
+需要在脚本或 CI 流水线里用显式参数运行：
 
 ```bash
-claude plugin marketplace add https://github.com/art8engine/viralman
-claude plugin install viralman
-```
-
-不需要记命令，直接说：
-
-```
-"配置 viralman"          → /viralman-setup 触发。Step 0 自动完成 venv/flask/shim 引导，
-                           然后保存你选择的一个渠道的凭证。
-"打开面板"               → /dashboard → http://localhost:8765
-"给类似仓库的用户发邮件"   → /gitmail 启动 5 步交互流程
-"写一条不像 AI 的推文"    → /viral
-```
-
-发送前，代理依次确认 (1) 语言 (2) 主题风格 (3) 最终确认。
-
-### 路径 2 —— 本地 CLI / Dashboard（直接用 Python）
-
-适合不用 Claude Code、只想跑 viralman，或者想打开网页 Dashboard 的用户。
-
-```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-python3 -m venv .venv
-.venv/bin/pip install flask
-.venv/bin/pip install -e .   # 仅限 Python ≤ 3.13。3.14+ 跳过此行（shim 负责分发）
-
-# 可选：写一行 shim，让 viralman 在任何路径都能跑
-mkdir -p ~/.local/bin
-cat > ~/.local/bin/viralman <<'SH'
-#!/usr/bin/env bash
-exec "$HOME/path/to/viralman/.venv/bin/python" "$HOME/path/to/viralman/bin/viralman" "$@"
-SH
-chmod +x ~/.local/bin/viralman
-```
-
-> **Python 3.14**：setuptools 的 editable install 依赖可执行 `.pth` 文件，3.14 已禁用。3.14+ 推荐用上面的 shim。
-
-**第一次使用：**
-
-```bash
-viralman                                       # Dashboard → http://localhost:8765
-./scripts/save_creds.py --set GITHUB_TOKEN=... # 保存凭证
-```
-
-Dashboard 4 个标签页（Twitter / Reddit / Gitmail / Setup）涵盖全部操作。斜杠命令需要 Claude Code。
-
-### 路径 3 —— 直接调用脚本（自动化 / CI / headless）
-
-适合不需要 Dashboard 或 Claude Code、只想用显式参数跑脚本的用户。支持 CI 流水线。
-
-**安装**：与路径 2 相同（git clone + venv + flask + 包安装）。shim 可选。
-
-**保存凭证：**
-
-```bash
-read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
-# SMTP 等其他凭证同理
-./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
-```
-
-**gitmail 两阶段流程：**
-
-```bash
-# 阶段 1：收集收件人（直接指定种子仓库或关键词）
-./scripts/gitmail.py recipients \
-  --seed-repos owner1/repo1,owner2/repo2 \
-  --max-users 100 > recipients.json
-
-# 阶段 2：带语气·重点的 dry-run → 审核 → 实发
-./scripts/gitmail.py send-from-recipients \
-  --recipients-file recipients.json \
-  --project-name myproj \
-  --description "..." \
-  --tone "..." \
-  --emphasis "..." \
-  --subject-style headline \
-  --dry-run
-
-# 审核通过后去掉 --dry-run 再次运行即实发
-```
-
-**一次性运行：**
-
-```bash
+git clone https://github.com/art8engine/viralman && cd viralman
+pip install .
 ./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
 ```
+
+完整的 gitmail / viral 参数请见下文 [使用](#使用示例) 章节。
 
 ## 使用示例
 

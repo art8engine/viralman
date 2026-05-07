@@ -43,109 +43,52 @@ viralman                 # http://localhost:8765 が自動で開く
 
 ## インストール
 
-使い方に合わせて 3 つのパスから 1 つ選んでください。
+3 つのパス。通常はパス 1、Claude Code を使わない場合はパス 2、CI / 自動化はパス 3 を選んでください。
 
 ### パス 1 — Claude Code プラグイン（推奨）
 
-Claude Code の中で自然言語だけで全部やりたい人向け。
+ほとんどの Claude Code ユーザーに推奨する marketplace/plugin インストール。下の 2 行は Claude Code のスラッシュコマンドなので **1 行ずつ** 入力してください（2 行を一度に貼り付けると失敗します）:
+
+```
+/plugin marketplace add https://github.com/art8engine/viralman
+```
+
+続けて:
+
+```
+/plugin install viralman
+```
+
+リポジトリをローカルに clone 済みなら、URL の代わりに `./` も使えます:
+
+```
+/plugin marketplace add ./
+```
+
+インストール後はコマンドを覚える必要はなく、`"ダッシュボードを開いて"`、`"viralman をセットアップして"`、`"async-profiler のスターガザーにメール"` のように自然言語で話しかければ、エージェントが `/dashboard`、`/viralman-setup`、`/gitmail`、`/viral` のうち適切なものを発動します。送信直前には (1) 言語 (2) 件名スタイル (3) 最終確認 の順に確認されます。
+
+### パス 2 — pipx インストール（Claude Code 不要）
+
+Claude Code なしでローカルダッシュボード + 素の CLI だけ使いたい場合:
 
 ```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-claude plugin marketplace add ./
-claude plugin install viralman
+pipx install git+https://github.com/art8engine/viralman
+viralman   # → http://localhost:8765
 ```
 
-または clone せず GitHub から直接インストールも可能:
+`pipx` が独立した venv を作って `viralman` コマンドを `$PATH` に登録してくれます。既存の venv があれば `pip install git+...` でも同じです。ダッシュボードの 4 タブ（Twitter / Reddit / Gitmail / Setup）で全作業が完結し、スラッシュコマンドは Claude Code が必要です。
+
+### パス 3 — clone して直接実行（CI / headless / 自動化）
+
+スクリプトや CI パイプラインから明示的な引数で叩きたい場合:
 
 ```bash
-claude plugin marketplace add https://github.com/art8engine/viralman
-claude plugin install viralman
-```
-
-コマンドは覚えなくて OK — そのまま言葉で:
-
-```
-"viralman をセットアップして"  → /viralman-setup が発動。Step 0 が venv/flask/shim を自動ブートストラップ、
-                               その後好きなチャンネルの認証情報を 1 つ保存。
-"ダッシュボードを開いて"       → /dashboard → http://localhost:8765
-"似たリポのスターガザーにメール" → /gitmail が 5 ステップ対話フローを開始
-"AI っぽくない投稿を書いて"    → /viral
-```
-
-送信直前にエージェントが (1) 言語 (2) 件名スタイル (3) 最終確認 の順に確認します。
-
-### パス 2 — ローカル CLI / ダッシュボード（Python 直接実行）
-
-Claude Code なしで viralman だけ使いたい人、またはダッシュボード UI を使いたい人向け。
-
-```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-python3 -m venv .venv
-.venv/bin/pip install flask
-.venv/bin/pip install -e .   # Python ≤ 3.13 のみ。3.14+ はこの行をスキップ（shim が代替）
-
-# 任意：どこからでも viralman を呼べるよう shim を 1 つ置く
-mkdir -p ~/.local/bin
-cat > ~/.local/bin/viralman <<'SH'
-#!/usr/bin/env bash
-exec "$HOME/path/to/viralman/.venv/bin/python" "$HOME/path/to/viralman/bin/viralman" "$@"
-SH
-chmod +x ~/.local/bin/viralman
-```
-
-> **Python 3.14**: setuptools の editable install が使う実行可能 `.pth` ファイルが 3.14 で無効化された。3.14+ は上の shim 推奨。
-
-**初回利用:**
-
-```bash
-viralman                                       # ダッシュボード → http://localhost:8765
-./scripts/save_creds.py --set GITHUB_TOKEN=... # 認証情報を保存
-```
-
-ダッシュボードの 4 タブ（Twitter / Reddit / Gitmail / Setup）で全作業が完結。スラッシュコマンドは Claude Code が必要。
-
-### パス 3 — スクリプト直接呼び出し（自動化 / CI / headless）
-
-ダッシュボードも Claude Code も使わず、明示的な引数でスクリプトだけ動かしたい人向け。CI パイプラインで使用可。
-
-**インストール**: パス 2 と同じ（git clone + venv + flask + パッケージ）。shim は任意。
-
-**認証情報の保存:**
-
-```bash
-read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
-# SMTP 等も同じパターン
-./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
-```
-
-**gitmail 2 フェーズフロー:**
-
-```bash
-# フェーズ 1: 受信者収集（シードリポを直接指定またはキーワード）
-./scripts/gitmail.py recipients \
-  --seed-repos owner1/repo1,owner2/repo2 \
-  --max-users 100 > recipients.json
-
-# フェーズ 2: トーン・強調を反映した dry-run → 確認 → 本送信
-./scripts/gitmail.py send-from-recipients \
-  --recipients-file recipients.json \
-  --project-name myproj \
-  --description "..." \
-  --tone "..." \
-  --emphasis "..." \
-  --subject-style headline \
-  --dry-run
-
-# 確認後に --dry-run を外して再実行すると本送信
-```
-
-**ワンショット実行:**
-
-```bash
+git clone https://github.com/art8engine/viralman && cd viralman
+pip install .
 ./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
 ```
+
+gitmail / viral の全フラグ一覧は下の [使用例](#使用例) を参照してください。
 
 ## 使用例
 

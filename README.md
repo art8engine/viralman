@@ -43,106 +43,52 @@ viralman                 # opens http://localhost:8765
 
 ## Install
 
-Three paths — pick the one that fits how you work.
+Three paths. Path 1 is the easy default; Path 2 if you don't use Claude Code; Path 3 for CI / scripting.
 
 ### Path 1 — Claude Code plugin (recommended)
 
-Natural language inside Claude Code — no commands to remember.
+Marketplace/plugin install (recommended for most Claude Code users). These are Claude Code slash commands — enter them one at a time (pasting both lines at once will fail):
+
+```
+/plugin marketplace add https://github.com/art8engine/viralman
+```
+
+Then:
+
+```
+/plugin install viralman
+```
+
+From a local clone of the repo, swap the URL for `./`:
+
+```
+/plugin marketplace add ./
+```
+
+Once installed, just talk to the agent — `"open the dashboard"`, `"set up viralman"`, `"email people who starred async-profiler"` — and it dispatches the right slash command (`/dashboard`, `/viralman-setup`, `/gitmail`, `/viral`). Before any send, it asks (1) language (2) subject style (3) final OK.
+
+### Path 2 — pipx install (no Claude Code needed)
+
+If you prefer the local dashboard + bare CLI without Claude Code:
 
 ```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-claude plugin marketplace add ./
-claude plugin install viralman
+pipx install git+https://github.com/art8engine/viralman
+viralman   # → http://localhost:8765
 ```
 
-Or install straight from GitHub without cloning:
+`pipx` installs into an isolated venv and exposes `viralman` on your `$PATH`. Plain `pip install git+...` also works inside an existing venv. The 4-tab dashboard (Twitter / Reddit / Gitmail / Setup) covers everything; slash commands require Claude Code.
+
+### Path 3 — Clone + run (CI / headless / automation)
+
+For explicit CLI args from a script or CI pipeline:
 
 ```bash
-claude plugin marketplace add https://github.com/art8engine/viralman
-claude plugin install viralman
+git clone https://github.com/art8engine/viralman && cd viralman
+pip install .
+./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
 ```
 
-Just say it — no commands to memorize:
-
-```
-"set up viralman"           → /viralman-setup fires. Step 0 auto-bootstraps venv/flask/shim,
-                               then saves credentials for one channel of your choice.
-"open the dashboard"        → /dashboard → http://localhost:8765
-"email people who starred similar repos"
-                            → /gitmail starts the 5-step interactive flow
-"write a post that doesn't feel AI"
-                            → /viral
-```
-
-Before any send, the agent asks (1) language (2) subject style (3) final OK — in that order.
-
-### Path 2 — Local CLI / dashboard (Python direct)
-
-No Claude Code needed — dashboard UI or bare CLI.
-
-```bash
-git clone https://github.com/art8engine/viralman
-cd viralman
-python3 -m venv .venv
-.venv/bin/pip install flask
-.venv/bin/pip install -e .   # Python ≤ 3.13 only. Skip on 3.14+ (shim dispatches instead)
-
-# Optional shim — call viralman from anywhere
-mkdir -p ~/.local/bin
-cat > ~/.local/bin/viralman <<'SH'
-#!/usr/bin/env bash
-exec "$HOME/path/to/viralman/.venv/bin/python" "$HOME/path/to/viralman/bin/viralman" "$@"
-SH
-chmod +x ~/.local/bin/viralman
-```
-
-> **Python 3.14**: setuptools' editable install relies on executable `.pth` files, which 3.14 disables. The shim above bypasses that and is the recommended path on 3.14+.
-
-**First use:**
-
-```bash
-viralman                                       # dashboard → http://localhost:8765
-./scripts/save_creds.py --set GITHUB_TOKEN=... # save credentials
-```
-
-The 4-tab dashboard (Twitter / Reddit / Gitmail / Setup) covers everything. Slash commands require Claude Code.
-
-### Path 3 — Direct script (automation / CI / headless)
-
-For explicit CLI args without dashboard or Claude Code. Usable in CI pipelines.
-
-**Install**: same as Path 2 (git clone + venv + flask + package). Shim is optional.
-
-**Credentials:**
-
-```bash
-read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s
-./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587
-```
-
-**gitmail 2-phase flow:**
-
-```bash
-# Phase 1: collect recipients (seed repos or keywords)
-./scripts/gitmail.py recipients \
-  --seed-repos owner1/repo1,owner2/repo2 \
-  --max-users 100 > recipients.json
-
-# Phase 2: dry-run with tone & emphasis → review → live send
-./scripts/gitmail.py send-from-recipients \
-  --recipients-file recipients.json \
-  --project-name myproj \
-  --description "..." \
-  --tone "..." \
-  --emphasis "..." \
-  --subject-style headline \
-  --dry-run
-
-# Drop --dry-run to send for real after review
-```
-
-One-shot: `./scripts/gitmail.py run --description "..." --max-users 100 --dry-run`
+See [Usage](#usage) below for the full gitmail / viral flag list.
 
 ## Examples
 

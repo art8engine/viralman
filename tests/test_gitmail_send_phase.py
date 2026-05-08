@@ -317,7 +317,7 @@ class TestRecipientsKeywordsOverride(unittest.TestCase):
                           return_value=iter([{"login": "alice",
                                                 "html_url": "https://github.com/alice"}])), \
              patch.object(gitmail.github_search, "resolve_user_email",
-                          side_effect=lambda login, token=None: emails.get(login, "")), \
+                          side_effect=lambda login, token=None, **kw: emails.get(login, "")), \
              patch("builtins.print"), \
              emit_patch:
             args = _build_recipients_args(
@@ -364,7 +364,7 @@ class TestRecipientsSeedReposSkipsSearch(unittest.TestCase):
              patch.object(gitmail.github_search, "iter_stargazers",
                           side_effect=fake_stargazers), \
              patch.object(gitmail.github_search, "resolve_user_email",
-                          side_effect=lambda login, token=None: emails.get(login, "")), \
+                          side_effect=lambda login, token=None, **kw: emails.get(login, "")), \
              patch("builtins.print"), \
              emit_patch:
             args = _build_recipients_args(

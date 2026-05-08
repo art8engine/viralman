@@ -182,7 +182,7 @@ class TestStep3CollectWithSeedRepos(unittest.TestCase):
              patch.object(gitmail.github_search, "iter_stargazers",
                           side_effect=fake_stargazers), \
              patch.object(gitmail.github_search, "resolve_user_email",
-                          side_effect=lambda login, token=None: email_map.get(login, "")), \
+                          side_effect=lambda login, token=None, **kw: email_map.get(login, "")), \
              patch("builtins.print"), \
              emit_patch:
             args = _build_recipients_args(
@@ -446,7 +446,7 @@ class TestFullPipelineRunWithUserOverrides(unittest.TestCase):
              patch.object(gitmail.github_search, "iter_stargazers",
                           side_effect=fake_stargazers), \
              patch.object(gitmail.github_search, "resolve_user_email",
-                          side_effect=lambda login, token=None: email_map.get(login, "")), \
+                          side_effect=lambda login, token=None, **kw: email_map.get(login, "")), \
              patch.object(gitmail.llm_compose, "compose_email",
                           side_effect=capturing_compose), \
              emit_patch:

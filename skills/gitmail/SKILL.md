@@ -76,7 +76,7 @@ Use the `AskUserQuestion` tool to surface all four questions in one call (multiS
 
 The selected value becomes a prefix to `--tone` (e.g. English → `--tone "in English, ..."`). For Korean, the prefix is omitted.
 
-### Q2 — Subject style (4-way choice, with previews)
+### Q2 — Subject style (5-way choice, with previews)
 
 | key | pattern | example (Argus, English) |
 |---|---|---|
@@ -84,8 +84,15 @@ The selected value becomes a prefix to `--tone` (e.g. English → `--tone "in En
 | `headline` | "Hi, now you can easily &lt;benefit&gt; too." | Hi, now you can easily watch your JVM in production too. |
 | `tag` | `[Label] product — one-line value` | [New Tool] Argus — JVM monitoring without the heavy agent. |
 | `simple` | Under 30 chars, no marketing tone | Argus — JVM monitoring |
+| `manual` (직접 입력하기) | User provides the exact subject AND body. Skips the LLM entirely — placeholders `{login}`, `{starred_repo}`, `{project_name}`, `{project_url}` substitute per recipient. | (waiting for your input) |
 
-Pass each option's example text into the `preview` field of `AskUserQuestion` so the user can compare side-by-side.
+Pass each option's example text into the `preview` field of `AskUserQuestion` so the user can compare side-by-side. The `manual` option must be placed **last** so the LLM-driven choices stay grouped.
+
+**If the user picks `manual`**, do NOT proceed to Step 3 yet. Ask one follow-up prompt that requests:
+1. the subject line (free text, may use the placeholders above),
+2. the email body (free text; multi-line OK; may use the same placeholders).
+
+Save the body to `/tmp/gitmail_user_body.txt`. In Step 4 / Step 5, replace `--template-only` with `--prewritten-subject "<subject>" --prewritten-body /tmp/gitmail_user_body.txt`. Keep `--dry-run` for Step 4 so the user still sees a literal preview before live send.
 
 ### Q3 — Targeting strategy
 
@@ -161,6 +168,20 @@ Generate a body preview with this list? (yes / adjust count / cancel)
   > /tmp/gitmail_dryrun.json 2>&1
 ```
 
+**Manual path (Q2 = `manual` / 직접 입력하기)** — skip the LLM entirely:
+
+```bash
+.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+  --recipients-file /tmp/gitmail_recipients_clean.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
+  --prewritten-subject "$USER_SUBJECT" \
+  --prewritten-body /tmp/gitmail_user_body.txt \
+  --dry-run \
+  > /tmp/gitmail_dryrun.json 2>&1
+```
+
 Pull the first body from the `compose_done` event and show it:
 
 ```
@@ -199,6 +220,19 @@ Run only when the user has explicitly signaled intent to send:
 ```
 
 Keep `--template-only` — the body is the one the user already approved, so regenerating costs nothing useful. Calling the LLM 50 more times is wasted budget and time.
+
+**Manual path (Q2 = `manual` / 직접 입력하기)** — same as Step 4 minus `--dry-run`, no LLM call:
+
+```bash
+.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+  --recipients-file /tmp/gitmail_recipients_clean.json \
+  --project-name "$NAME" \
+  --description "$DESC" \
+  --project-url "$URL" \
+  --prewritten-subject "$USER_SUBJECT" \
+  --prewritten-body /tmp/gitmail_user_body.txt \
+  > /tmp/gitmail_send.json 2>&1
+```
 
 When done, summarize:
 

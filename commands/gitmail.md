@@ -20,7 +20,7 @@ The full flow is documented in `skills/gitmail/SKILL.md` (single source of truth
 2. **Step 1 — Project analysis (Claude direct)** — when the first token of `$ARGUMENTS` is a GitHub URL, derive a first-pass keyword from the owner/repo slug and combine with any free-text the user provided. Do not fetch the README. Print the analysis as 2–3 lines so the user has context for the batch question.
 3. **Step 2 — Batch question (AskUserQuestion, exactly once)** — surface all four questions in one call. Do **not** call `gitmail.py recipients` or `send-from-recipients` until the answers are in.
    - **Q1 Language**: Korean / English / Chinese / Japanese
-   - **Q2 Subject style**: `auto` / `headline` / `tag` / `simple` (each option carries a preview string)
+   - **Q2 Subject style**: `auto` / `headline` / `tag` / `simple` / `manual` (직접 입력하기 — last option) — each LLM-driven option carries a preview string. If `manual` is picked, ask one follow-up for the literal subject + body, save the body to `/tmp/gitmail_user_body.txt`, and skip Step 4's LLM call by using `--prewritten-subject "<subject>" --prewritten-body /tmp/gitmail_user_body.txt` (placeholders `{login}`, `{starred_repo}`, `{project_name}`, `{project_url}` substitute per recipient).
    - **Q3 Targeting strategy**: recommended seeds (Claude picks live) / keyword search / auto
    - **Q4 Recipients**: 100 / 500 / 1000 / 1500 (Other auto-added, 1–1500). Tell the user the two caps are separate:
      - **Collection cap = 1,500** — safe ceiling at 3x oversample on GitHub's GraphQL+REST dual 5,000/hr buckets.

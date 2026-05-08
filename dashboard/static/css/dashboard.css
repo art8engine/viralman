@@ -364,3 +364,37 @@ input:focus, textarea:focus, select:focus { border-color: var(--bd-3); }
   display: flex; align-items: center; gap: 12px; justify-content: center;
   padding: 12px 0 0;
 }
+
+/* ─── Twitter-reply candidate cards ─── */
+.txr-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px; margin-top: 14px;
+}
+.txr-card {
+  background: var(--bg-3); border: 1px solid var(--bd); border-radius: 12px;
+  padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.txr-card-hd { display: flex; align-items: center; gap: 10px; }
+.txr-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg-4); object-fit: cover;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.txr-avatar-fallback {
+  font-size: 14px; font-weight: 600; color: var(--fg-2);
+  border: 1px solid var(--bd);
+}
+.txr-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.txr-who strong { font-size: 14px; }
+.txr-handle { font-size: 12px; color: var(--fg-3); font-family: var(--mono); }
+.txr-time { font-size: 11px; color: var(--fg-3); }
+.txr-text {
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--fg);
+  white-space: pre-wrap; word-break: break-word;
+}
+.txr-card-ft {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  padding-top: 6px; border-top: 1px dashed var(--bd);
+}
+.txr-eng { font-size: 12px; color: var(--fg-3); font-family: var(--mono); }
+#txr-empty { padding: 18px 0 4px; font-size: 13px; color: var(--fg-3); }

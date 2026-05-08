@@ -51,6 +51,10 @@ def create_app(*, secret_key: str | None = None) -> Flask:
     def page_gitmail():
         return render_template("gitmail.html", active="gitmail")
 
+    @app.route("/twitter-reply")
+    def page_twitter_reply():
+        return render_template("twitter_reply.html", active="twitter-reply")
+
     @app.route("/setup")
     def page_setup():
         return render_template("setup.html", active="setup")

@@ -819,3 +819,80 @@ def register(app) -> None:
 
         threads = _fetch_reddit_threads(subs[:5], keywords[:3], per_sub=5)
         return jsonify({"ok": True, "threads": threads})
+
+    # ----- twitter reply (scrape candidates + post per-tweet replies) -----
+
+    TWITTER_CANDIDATES_PATH = Path("/tmp/twitter_candidates.json")
+
+    @app.get("/api/twitter-reply/cache")
+    def twitter_reply_cache():
+        if not TWITTER_CANDIDATES_PATH.exists():
+            return jsonify({"ok": True, "candidates": [], "query": ""})
+        try:
+            payload = json.loads(TWITTER_CANDIDATES_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            return jsonify({"ok": False, "error": f"cache parse error: {e}"}), 500
+        return jsonify({"ok": True,
+                         "candidates": payload.get("candidates", []),
+                         "query": payload.get("query", "")})
+
+    @app.post("/api/twitter-reply/scrape")
+    def twitter_reply_scrape():
+        data = request.get_json(silent=True) or {}
+        query = (data.get("query") or "").strip()
+        keywords = (data.get("keywords") or "").strip()
+        if not query and not keywords:
+            return jsonify({"ok": False, "error": "query or keywords required"}), 400
+
+        cli = ["find", "--out", str(TWITTER_CANDIDATES_PATH),
+                "--max-candidates", str(int(data.get("max_candidates") or 20)),
+                "--min-engagement", str(int(data.get("min_engagement") or 0))]
+        if query:
+            cli += ["--query", query]
+        if keywords:
+            cli += ["--keywords", keywords]
+        if data.get("lang"):
+            cli += ["--lang", str(data["lang"])]
+        if data.get("include_retweets"):
+            cli += ["--include-retweets"]
+
+        cmd = [sys.executable, str(SCRIPTS / "twitter_reply.py")] + cli
+        try:
+            proc = subprocess.run(cmd, text=True, capture_output=True, timeout=30,
+                                    cwd=str(REPO_ROOT))
+        except subprocess.TimeoutExpired:
+            return jsonify({"ok": False, "error": "scrape timeout"}), 504
+
+        if proc.returncode != 0:
+            err = proc.stderr.strip() or proc.stdout.strip() or "scrape failed"
+            return jsonify({"ok": False, "error": err[:300]}), 502
+
+        if not TWITTER_CANDIDATES_PATH.exists():
+            return jsonify({"ok": False, "error": "no output file written"}), 502
+        try:
+            payload = json.loads(TWITTER_CANDIDATES_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            return jsonify({"ok": False, "error": f"output parse error: {e}"}), 502
+        return jsonify({"ok": True,
+                         "candidates": payload.get("candidates", []),
+                         "query": payload.get("query", "")})
+
+    @app.post("/api/twitter-reply/reply")
+    def twitter_reply_post():
+        data = request.get_json(silent=True) or {}
+        tweet_id = (data.get("tweet_id") or "").strip()
+        body = (data.get("body") or "").strip()
+        if not tweet_id or not body:
+            return jsonify({"ok": False, "error": "tweet_id and body required"}), 400
+        if len(body) > 280:
+            return jsonify({"ok": False, "error": f"{len(body)} chars > 280"}), 400
+
+        result = _run_post_script(
+            "twitter_reply.py",
+            ["reply", "--tweet-id", tweet_id, "--body", "-"],
+            body,
+        )
+        if not result.get("ok"):
+            return jsonify({"ok": False,
+                             "error": result.get("stderr") or result.get("stdout") or "reply failed"}), 502
+        return jsonify({"ok": True, "url": result.get("url")})

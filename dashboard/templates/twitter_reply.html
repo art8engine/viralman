@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="page">
+  <header class="page-intro">
+    <svg class="brand-icon brand-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    <div>
+      <h1 data-i18n="page.txr.title">Twitter / X — reply candidates</h1>
+      <p data-i18n="page.txr.intro">Tweets where it would feel natural to reply "I built this thing — want to take a look?". Scrape from a project, browse the cards, jump to the original on X, or compose a reply.</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2 data-i18n="txr.search">search</h2>
+    <div class="grid three">
+      <label><span data-i18n="txr.query">query</span><input type="text" id="txr-query" placeholder='"jvm monitoring" -is:retweet'></label>
+      <label><span data-i18n="txr.keywords">keywords</span><input type="text" id="txr-keywords" placeholder="comma,separated"></label>
+      <label><span data-i18n="txr.lang">lang</span>
+        <select id="txr-lang">
+          <option value="">(any)</option>
+          <option value="en">en</option>
+          <option value="ko">ko</option>
+          <option value="ja">ja</option>
+          <option value="zh">zh</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid three">
+      <label><span data-i18n="txr.max">max candidates</span><input type="number" id="txr-max" value="20" min="10" max="100"></label>
+      <label><span data-i18n="txr.min_eng">min engagement</span><input type="number" id="txr-min" value="5" min="0"></label>
+      <label class="check"><input type="checkbox" id="txr-rt"><span data-i18n="txr.include_rt">include retweets</span></label>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="txr-scrape" data-i18n="txr.scrape">scrape</button>
+      <button class="btn ghost" id="txr-reload" data-i18n="txr.reload_cache">reload from cache</button>
+      <span class="meta" id="txr-meta">—</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row vm-between">
+      <h2 data-i18n="txr.candidates">candidates</h2>
+      <span class="meta" id="txr-summary">0 candidates</span>
+    </div>
+    <div id="txr-cards" class="txr-cards"></div>
+    <div class="hint" id="txr-empty" data-i18n="txr.empty">No candidates yet. Run a scrape, or load a cached result.</div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/twitter_reply.js') }}"></script>{% endblock %}

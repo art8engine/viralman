@@ -392,10 +392,20 @@ def step_send(
 
     sent = 0
     failed = 0
+    unprocessed = 0
     failures: List[Dict[str, str]] = []
+    # Provider-side errors that mean the session is dead or further attempts
+    # will be rejected. When we see one, stop the loop instead of cascading
+    # 'please run connect() first' into hundreds of false failures.
+    abort_markers = (
+        "connect() first",                   # smtplib on a closed session
+        "Connection unexpectedly closed",    # mid-send disconnect
+        "Daily user sending limit",          # Gmail global daily quota (5.4.5)
+        "5.4.5",                              # Gmail rate-limit code (defensive)
+    )
     _emit("send_start", count=len(composed))
     try:
-        for r in composed:
+        for i, r in enumerate(composed):
             email = (r.get("email") or "").lower()
             if email and email in unsubbed:
                 skipped += 1
@@ -420,18 +430,30 @@ def step_send(
                       message_id=result["message_id"], sent=sent,
                       target=len(composed))
             except Exception as e:
+                msg = str(e)
                 failed += 1
                 failures.append({"login": r["login"], "email": r["email"],
-                                  "error": str(e)})
+                                  "error": msg})
                 _emit("send_fail", to=r["email"], login=r["login"],
-                      error=str(e), failed=failed)
+                      error=msg, failed=failed)
+                if any(m in msg for m in abort_markers):
+                    unprocessed = len(composed) - i - 1
+                    _emit("send_aborted",
+                          reason="smtp_unrecoverable",
+                          processed=sent + failed,
+                          total=len(composed),
+                          unprocessed=unprocessed,
+                          first_blocking_error=msg[:200])
+                    break
     finally:
         try:
             smtp.quit()
         except Exception:
             pass
-    _emit("send_done", sent=sent, failed=failed, skipped=skipped)
+    _emit("send_done", sent=sent, failed=failed, skipped=skipped,
+          unprocessed=unprocessed)
     return {"sent": sent, "failed": failed, "skipped": skipped,
+            "unprocessed": unprocessed,
             "failures": failures, "skips": skips}
 
 

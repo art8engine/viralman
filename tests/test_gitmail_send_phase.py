@@ -516,6 +516,80 @@ class TestComposeEmailSignatureAcceptsToneEmphasis(unittest.TestCase):
         self.assertEqual(out["subject"], "ok")
 
 
+# --------------------------------------------------------------------------- #
+# 10. step_send aborts on unrecoverable SMTP errors                            #
+# --------------------------------------------------------------------------- #
+
+
+class TestStepSendAbortsOnUnrecoverableSmtpError(unittest.TestCase):
+    """When the SMTP session dies mid-batch (Gmail daily-limit hit, then every
+    subsequent send_one raises 'please run connect() first'), step_send must
+    stop the loop and emit a single send_aborted event with the unprocessed
+    count, instead of recording hundreds of cascade failures against
+    recipients we never actually attempted."""
+
+    def test_aborts_on_daily_limit_instead_of_cascading(self):
+        creds = {"SMTP_FROM": "me@x.com", "SMTP_USER": "me@x.com",
+                 "SMTP_HOST": "smtp.example.com", "SMTP_PASSWORD": "x"}
+        composed = _make_recipients(10)
+        for r in composed:
+            r["subject"] = "s"
+            r["body"] = "hi"
+
+        # First 3 sends succeed, 4th hits Gmail daily-limit, the rest would
+        # cascade with 'connect() first' if we didn't abort.
+        call_count = {"n": 0}
+
+        def fake_send_one(smtp, creds, **kwargs):
+            call_count["n"] += 1
+            n = call_count["n"]
+            if n <= 3:
+                return {"to": kwargs["to_addr"], "subject": "s",
+                        "message_id": f"<{n}@x>",
+                        "unsubscribe_token": f"t{n}"}
+            if n == 4:
+                raise Exception(
+                    "(550, b'5.4.5 Daily user sending limit exceeded')")
+            raise Exception("please run connect() first")
+
+        class _Limiter:
+            def wait(self):
+                pass
+
+        def fake_open_session(c):
+            class _Stub:
+                def quit(self):
+                    pass
+            return (_Stub(), _Limiter())
+
+        captured, emit_patch = _capture_emits()
+        with patch.object(gitmail.smtp_send, "open_session",
+                          side_effect=fake_open_session), \
+             patch.object(gitmail.smtp_send, "send_one",
+                          side_effect=fake_send_one), \
+             patch.object(gitmail, "load_unsubscribed_emails",
+                          return_value=set()), \
+             patch.object(gitmail, "record_token_email"), \
+             emit_patch:
+            result = gitmail.step_send(
+                creds, composed,
+                unsubscribe_base="http://localhost", dry_run=False,
+            )
+
+        # Only the daily-limit fail counts. No cascade fails after abort.
+        self.assertEqual(result["sent"], 3)
+        self.assertEqual(result["failed"], 1)
+        self.assertEqual(result["unprocessed"], 6)  # 10 - 3 sent - 1 failed
+        # send_one called exactly 4 times (3 ok + 1 daily-limit), not 10.
+        self.assertEqual(call_count["n"], 4)
+        aborted = [e for e in captured if e["event"] == "send_aborted"]
+        self.assertEqual(len(aborted), 1)
+        self.assertEqual(aborted[0]["unprocessed"], 6)
+        self.assertEqual(aborted[0]["reason"], "smtp_unrecoverable")
+        fails = [e for e in captured if e["event"] == "send_fail"]
+        self.assertEqual(len(fails), 1)
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-v"]))

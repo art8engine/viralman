@@ -15,6 +15,8 @@ Auto-trigger on:
 - `/gitmail`
 - "gitmail", "gitmail 해줘", "gitmail 보내줘", "gitmail outreach"
 - "gitmail this project", "gitmail으로 메일 보내줘", "gitmail로 홍보해줘"
+- **Korean transliteration**: "깃메일", "깃메일 써서", "깃메일 써줘", "깃메일로 보내줘", "깃메일 발송", "깃메일 돌려줘"
+- **GitHub-mail intent**: "깃허브 메일", "깃허브 메일 기능", "깃허브 메일 기능으로", "깃허브 메일 기능 써서", "GitHub 메일 기능으로", "github 메일로 알려줘"
 
 **Korean**: "이 프로젝트 홍보메일 보내줘", "GitHub 스타거에게 메일", "비슷한 레포 사용자한테 메일", "이거 메일로 알려줘", "asyncprofiler 별표한 사람한테 보내줘"
 
@@ -23,6 +25,8 @@ Auto-trigger on:
 **Chinese**: "给类似仓库的 stargazer 发邮件", "推广我的项目 邮件"
 
 **Japanese**: "似たリポジトリのスターガザーにメール", "プロジェクトを紹介するメール"
+
+> **Disambiguation rule**: when the user's intent is generic ("바이럴 해줘" / "promote this" / "make it viral") **without** mentioning email, mail, gitmail, or GitHub stargazers, **do NOT auto-trigger gitmail** — defer to the `viral` skill's router (X / Reddit / Gitmail 3-way question). gitmail only auto-triggers when the words above name email/mail/gitmail explicitly.
 
 When the user enters via `/gitmail`, the argument parsing in `commands/gitmail.md` runs first.
 
@@ -38,24 +42,9 @@ If anything is missing, route the user to `/viralman-setup gitmail` and stop. Ne
 
 ---
 
-## Step 1 — Project analysis (Claude direct, before any gitmail.py call)
+## Step 1 — Project intent capture
 
-Extract a GitHub URL or free-text description from `$ARGUMENTS`.
-
-- First token starts with `https://github.com/` → treat as URL. Do **not** call `gh repo view` or fetch the README (saves rate budget + responds faster).
-- If a free-text description is also present, use it as the description.
-- If both are missing, ask once and wait for the answer. Do not guess.
-
-When a URL is given, derive a first-pass keyword from the owner/repo slug (e.g. `rlaope/Argus` → "Argus"). If the user provided extra description, prefer that.
-
-The analysis output is short (2–3 lines), printed to the user before the batch question so they have context for their answer:
-
-```
-Project: Argus (https://github.com/rlaope/Argus)
-What I understood: <one-line summary — based on user description + URL slug>
-If this is right, please answer the questions below. If wrong, correct me
-and I'll redo it.
-```
+Follow `skills/copy-prep/SKILL.md` §Project intent capture for the URL parsing rule, the keyword derivation, and the 2–3 line confirmation print. The struct it produces (`url` / `name` / `description` / `keyword`) feeds Step 3's `gitmail.py recipients --description "$DESC" --project-url "$URL"`.
 
 ---
 
@@ -67,32 +56,13 @@ Use the `AskUserQuestion` tool to surface all four questions in one call (multiS
 
 ### Q1 — Language
 
-| option | description |
-|---|---|
-| Korean (default) | Default. Korean developers as the audience. |
-| English | English mail. For global outreach. |
-| Chinese | Chinese mail. |
-| Japanese | Japanese mail. |
+Use the option list from `skills/copy-prep/SKILL.md` §Language picker. The selected value becomes a prefix to `--tone` (e.g. English → `--tone "in English, ..."`). For Korean, the prefix is omitted.
 
-The selected value becomes a prefix to `--tone` (e.g. English → `--tone "in English, ..."`). For Korean, the prefix is omitted.
+### Q2 — Subject style
 
-### Q2 — Subject style (5-way choice, with previews)
+Use the 5-option table from `skills/copy-prep/SKILL.md` §Subject format presets. Pass each option's example into the `preview` field of `AskUserQuestion`. The `manual` (직접 입력하기) option must be last.
 
-| key | pattern | example (Argus, English) |
-|---|---|---|
-| `auto` | LLM picks freely. Subject varies per recipient. | (LLM-decided) |
-| `headline` | "Hi, now you can easily &lt;benefit&gt; too." | Hi, now you can easily watch your JVM in production too. |
-| `tag` | `[Label] product — one-line value` | [New Tool] Argus — JVM monitoring without the heavy agent. |
-| `simple` | Under 30 chars, no marketing tone | Argus — JVM monitoring |
-| `manual` (직접 입력하기) | User provides the exact subject AND body. Skips the LLM entirely — placeholders `{login}`, `{starred_repo}`, `{project_name}`, `{project_url}` substitute per recipient. | (waiting for your input) |
-
-Pass each option's example text into the `preview` field of `AskUserQuestion` so the user can compare side-by-side. The `manual` option must be placed **last** so the LLM-driven choices stay grouped.
-
-**If the user picks `manual`**, do NOT proceed to Step 3 yet. Ask one follow-up prompt that requests:
-1. the subject line (free text, may use the placeholders above),
-2. the email body (free text; multi-line OK; may use the same placeholders).
-
-Save the body to `/tmp/gitmail_user_body.txt`. In Step 4 / Step 5, replace `--template-only` with `--prewritten-subject "<subject>" --prewritten-body /tmp/gitmail_user_body.txt`. Keep `--dry-run` for Step 4 so the user still sees a literal preview before live send.
+**If the user picks `manual`**, follow §Manual override pattern from copy-prep — gitmail's no-LLM path is `--prewritten-subject "<subject>" --prewritten-body /tmp/gitmail_user_body.txt` (placeholders `{login}`, `{starred_repo}`, `{project_name}`, `{project_url}` substitute per recipient). Save the user-supplied body to `/tmp/gitmail_user_body.txt`. Step 4 keeps `--dry-run` so the user still sees a literal preview before live send.
 
 ### Q3 — Targeting strategy
 

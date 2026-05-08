@@ -43,14 +43,14 @@ Print the key list and stop. Do not proceed to any setup steps.
 If the category was not provided as the first argument, print exactly once:
 
 ```
-어떤 채널을 셋업하시겠어요?
+Which channel do you want to set up?
 
-  1. gitmail  — GitHub 스타거 대상으로 콜드 메일 발송 (가장 많이 쓰는 흐름)
-  2. twitter  — X 트윗 자동 게시 (선택 — 기본은 compose URL 폴백)
-  3. reddit   — 서브레딧 게시
-  4. linkedin — LinkedIn 게시
+  1. gitmail  — cold email outreach to GitHub stargazers (most common)
+  2. twitter  — automated X/Twitter posting (optional — default falls back to compose URL)
+  3. reddit   — subreddit posting
+  4. linkedin — LinkedIn posting
 
-번호 또는 이름으로 답해주세요.
+Reply with the number or the name.
 ```
 
 Wait for the user's reply. Do not proceed until you have an unambiguous answer.
@@ -63,15 +63,15 @@ If `--plain` was passed **or** the user pastes something that looks like an API
 key / token directly into the chat (long alphanumeric string, Bearer prefix,
 `ghp_…`, etc.), print this warning **once**:
 
-> ⚠ 토큰을 채팅창에 평문으로 입력하셨습니다. 이 내용은 LLM 컨텍스트와 대화
-> 로그에 남을 수 있습니다.
+> ⚠ You pasted a token in plain text in this chat. The contents may be
+> retained in the LLM context and the conversation log.
 >
-> 더 안전한 방법:
+> Safer alternative:
 > `read -rs -p '<KEY>: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin <KEY>; unset s; echo`
 >
-> 그래도 진행하시면 `./scripts/save_creds.py --set <KEY>=<VALUE>`로 저장합니다.
+> If you continue anyway, the token will be saved via `./scripts/save_creds.py --set <KEY>=<VALUE>`.
 
-Ask for confirmation ("진행할까요? y/n"). After the user confirms, proceed with
+Ask for confirmation ("Proceed? y/n"). After the user confirms, proceed with
 `./scripts/save_creds.py --set KEY=VALUE`. Do not show the warning again for
 subsequent keys in the same session.
 

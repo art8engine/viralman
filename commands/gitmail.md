@@ -4,41 +4,41 @@ allowed-tools: Read, Bash(.venv/bin/python:*), Bash(./scripts/gitmail.py:*), Bas
 argument-hint: "<project-url|description> [--tone '...'] [--emphasis '...'] [--seed-repos a/b,c/d] [--keywords k1,k2] [--max-users N] [--subject-style auto|headline|tag|simple]"
 ---
 
-# /gitmail — 유사 repo 스타게이저에게 맞춤 이메일
+# /gitmail — personalized cold email to similar-repo stargazers
 
-전체 흐름은 `skills/gitmail/SKILL.md` 가 단일 진실 원천. 여기서는 진입점·인자 파싱·boundary만 빠르게 정리.
+The full flow is documented in `skills/gitmail/SKILL.md` (single source of truth). This file covers entry point, argument parsing, and boundaries only.
 
 ```
 /gitmail https://github.com/rlaope/Argus
-/gitmail "JVM 모니터링 SaaS 알리고 싶어"
+/gitmail "Want to launch my JVM-monitoring SaaS"
 /gitmail https://github.com/foo/bar --subject-style tag --max-users 100
 ```
 
-## 진입 시 동작
+## Entry behavior
 
-1. **Pre-flight** — `./scripts/save_creds.py --show-keys` 로 `GITHUB_TOKEN` + 1개 LLM 키 + (실발송 시) SMTP 풀세트 확인. 누락이면 `/viralman-setup gitmail` 안내 후 종료.
-2. **Step 1 — 프로젝트 분석 (Claude 직접)** — `$ARGUMENTS` 첫 토큰 GitHub URL이면 owner/repo 슬러그에서 1차 추정 + 사용자가 준 자유 설명 결합. README fetch 금지. 분석 결과 2~3줄로 사용자에게 출력해 batch 답변 전 맥락 제공.
-3. **Step 2 — Batch 질문 (AskUserQuestion 1회)** — 4개 묶음으로 띄운다. 이 질문이 끝나기 전에는 절대 `gitmail.py recipients` / `send-from-recipients` 어떤 것도 호출하지 않는다.
-   - **Q1 Language**: 한국어 / English / 中文 / 日本語
-   - **Q2 Subject 스타일**: `auto` / `headline` / `tag` / `simple` (각 옵션에 preview 텍스트 첨부)
-   - **Q3 타깃팅 전략**: 추천 시드 (Claude 즉석 추천) / 키워드 검색 / 자동
-   - **Q4 인원**: 100 / 500 / 1000 / 1500 (Other 자동 추가, 1-1500). 캡 두 개가 별개임을 사용자에게 안내:
-     - **수집 캡 1,500** — GitHub GraphQL+REST 듀얼 5,000/hr 버킷에서 3x oversample 로 안전한 상한.
-     - **SMTP 발송 캡 (1일)** — *무료 @gmail.com 500*, *Workspace 2,000*. 수집 1500 해도 무료 Gmail 이면 3일 분할 필요. step_send 가 자동 abort + unprocessed 카운트 분리.
-4. **Step 3 — 수집** — `.venv/bin/python ./scripts/gitmail.py recipients ...` 실행. JSONL 스트림 끝의 recipients 배열만 잘라 `/tmp/gitmail_recipients_clean.json` 으로 저장. 8명까지만 미리보기로 출력.
-5. **Step 4 — Fast dry-run preview** — `send-from-recipients --template-only --dry-run` 으로 LLM 1번 호출 → 첫 본문 출력. (50명 dry-run 13분 → ~16초 단축의 핵심.)
-6. **Step 5 — 실발송 대기** — 사용자가 "발송해줘" / "send" / "go" 같이 명시적 OK 줄 때만 `--template-only` (dry-run 제외) 로 실행. 피드백을 주면 인자만 바꿔 Step 4 재실행.
+1. **Pre-flight** — `./scripts/save_creds.py --show-keys` to verify `GITHUB_TOKEN` + one LLM key + (for real send) the SMTP cred set. If anything is missing, route to `/viralman-setup gitmail` and stop.
+2. **Step 1 — Project analysis (Claude direct)** — when the first token of `$ARGUMENTS` is a GitHub URL, derive a first-pass keyword from the owner/repo slug and combine with any free-text the user provided. Do not fetch the README. Print the analysis as 2–3 lines so the user has context for the batch question.
+3. **Step 2 — Batch question (AskUserQuestion, exactly once)** — surface all four questions in one call. Do **not** call `gitmail.py recipients` or `send-from-recipients` until the answers are in.
+   - **Q1 Language**: Korean / English / Chinese / Japanese
+   - **Q2 Subject style**: `auto` / `headline` / `tag` / `simple` (each option carries a preview string)
+   - **Q3 Targeting strategy**: recommended seeds (Claude picks live) / keyword search / auto
+   - **Q4 Recipients**: 100 / 500 / 1000 / 1500 (Other auto-added, 1–1500). Tell the user the two caps are separate:
+     - **Collection cap = 1,500** — safe ceiling at 3x oversample on GitHub's GraphQL+REST dual 5,000/hr buckets.
+     - **SMTP send cap (per day)** — *free @gmail.com 500*, *Workspace 2,000*. Even if 1500 is collected, free Gmail needs a 3-day split. step_send auto-aborts and splits the remainder into an `unprocessed` count.
+4. **Step 3 — Collection** — run `.venv/bin/python ./scripts/gitmail.py recipients ...`. Slice the recipients array off the tail of the JSONL stream and save to `/tmp/gitmail_recipients_clean.json`. Print at most 8 in the preview.
+5. **Step 4 — Fast dry-run preview** — `send-from-recipients --template-only --dry-run` makes one LLM call and reuses the body. (Cuts a 50-recipient dry-run from 13 min to ~16 sec.)
+6. **Step 5 — Wait for explicit send confirmation** — only run without `--dry-run` (`--template-only` retained) after the user explicitly says "발송해줘" / "send" / "go". On feedback, change the relevant arg and rerun Step 4.
 
-`$ARGUMENTS` 에 `--subject-style` / `--tone` / `--emphasis` / `--seed-repos` / `--keywords` / `--max-users` 가 이미 있으면 해당 항목은 batch 질문에서 제외하고 그 값을 그대로 사용한다.
+If `$ARGUMENTS` already includes `--subject-style` / `--tone` / `--emphasis` / `--seed-repos` / `--keywords` / `--max-users`, drop the matching question(s) from the batch and use the supplied value as-is.
 
-## Boundaries (요약 — 자세히는 SKILL.md)
+## Boundaries (summary — full set in SKILL.md)
 
-- 사용자가 명시적으로 "발송해줘" 의사를 보이기 전에는 절대 `--dry-run` 없는 `send-from-recipients` 를 호출하지 않는다.
-- unsubscribe footer / `List-Unsubscribe` 헤더는 절대 제거하지 않는다.
-- `--max-users` 는 1-1500 범위 내에서만 허용 (GraphQL 5,000 pt/hr + REST 5,000 req/hr 듀얼 버킷에서 안전한 상한; 그 이상은 둘 중 하나가 rate-limit 에 막혀 stall).
-- SMTP 발송 한도는 별개. 무료 @gmail.com 500/24h, Workspace 2,000/24h. 수집 인원이 SMTP 한도 초과면 step_send 가 자동 abort 하고 `send_aborted` 이벤트 + stderr 한국어 메시지로 알린다. 미발송분은 `unprocessed` 카운트로 분리되니 rolling 24h 후 retry 안내.
-- 실시간 발송 진행률은 `./scripts/gitmail_watch.py --auto` (또는 `--once` 로 statusLine 1회 출력) 사용.
-- `~/.viralman/.env` 값은 절대 읽거나 출력하지 않는다 (`--show-keys` 만 안전).
-- 이메일 주소를 발명하지 않는다. GitHub Users API / PushEvent 반환값만 사용.
-- 실패 발송 자동 재시도 금지.
-- 프라이빗 repo 스크래핑 / GitHub rate-limit 우회 요청은 거부.
+- Never call `send-from-recipients` without `--dry-run` until the user has explicitly said "발송해줘" / "send" / "go".
+- Never strip the unsubscribe footer or the `List-Unsubscribe` header.
+- `--max-users` is allowed only in 1–1500 (the safe GraphQL 5,000 pt/hr + REST 5,000 req/hr dual-bucket ceiling; above that, one bucket stalls on rate limit).
+- SMTP send limit is separate. Free @gmail.com 500/24h, Workspace 2,000/24h. When the collected count exceeds the SMTP cap, step_send auto-aborts, emits a `send_aborted` event, and prints a Korean stderr line. The remainder lands in `unprocessed` — point the user at the rolling 24h reset and the retry-recipients file.
+- For live progress, use `./scripts/gitmail_watch.py --auto` (or `--once` for a single statusLine print).
+- Never read or print `~/.viralman/.env` (only `--show-keys` is safe).
+- Never invent email addresses. Use only what the GitHub Users API / PushEvent endpoints return.
+- No automatic retry on send failures.
+- Refuse private-repo scraping or GitHub rate-limit evasion requests.

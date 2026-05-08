@@ -384,6 +384,23 @@ def step_send(
                 "previews": previews, "previews_count": len(previews),
                 "skips": skips}
 
+    # Pre-flight: warn when the batch exceeds the SMTP provider's daily quota.
+    # Gmail policy: 500 msg/day for personal gmail.com, 2,000 for Workspace.
+    smtp_host = (creds.get("SMTP_HOST") or "").lower()
+    if "gmail" in smtp_host and len(composed) > 500:
+        sender = (creds.get("SMTP_FROM") or "").lower()
+        # Workspace addresses are not @gmail.com — use that as a hint.
+        likely_personal = sender.endswith("@gmail.com")
+        cap = 500 if likely_personal else 2000
+        if len(composed) > cap:
+            print(
+                f"WARN: {len(composed)}명 발송 예정인데 Gmail "
+                f"{'무료(@gmail.com)' if likely_personal else 'Workspace'} "
+                f"일일 한도는 {cap}/24h 입니다. 한도 도달 시 자동 abort 후 "
+                f"미발송분이 unprocessed 로 분리됩니다 (rolling 24h 후 재발송 가능).",
+                file=sys.stderr,
+            )
+
     try:
         smtp, limiter = smtp_send.open_session(creds)
     except smtp_send.SmtpError as e:
@@ -438,12 +455,26 @@ def step_send(
                       error=msg, failed=failed)
                 if any(m in msg for m in abort_markers):
                     unprocessed = len(composed) - i - 1
+                    is_gmail_daily = ("Daily user sending limit" in msg
+                                       or "5.4.5" in msg)
+                    print(
+                        f"\nSTOP: SMTP {'일일 발송 한도 도달' if is_gmail_daily else '연결 끊김 (재시도 불가)'} "
+                        f"— {sent}건 발송, {unprocessed}명 미발송 (unprocessed). "
+                        f"Gmail 정책: 무료 @gmail.com 500/24h, Workspace 2,000/24h. "
+                        f"rolling window reset 후 retry-recipients 로 재발송하세요.",
+                        file=sys.stderr,
+                    )
                     _emit("send_aborted",
-                          reason="smtp_unrecoverable",
+                          reason="smtp_daily_limit" if is_gmail_daily
+                                  else "smtp_disconnected",
                           processed=sent + failed,
                           total=len(composed),
                           unprocessed=unprocessed,
-                          first_blocking_error=msg[:200])
+                          first_blocking_error=msg[:200],
+                          gmail_policy_note=(
+                              "Gmail free (@gmail.com): 500 msg/24h; "
+                              "Workspace: 2,000 msg/24h"),
+                          )
                     break
     finally:
         try:

@@ -585,7 +585,9 @@ class TestStepSendAbortsOnUnrecoverableSmtpError(unittest.TestCase):
         aborted = [e for e in captured if e["event"] == "send_aborted"]
         self.assertEqual(len(aborted), 1)
         self.assertEqual(aborted[0]["unprocessed"], 6)
-        self.assertEqual(aborted[0]["reason"], "smtp_unrecoverable")
+        # Daily-limit pattern in error → reason is smtp_daily_limit;
+        # raw disconnects fall under smtp_disconnected.
+        self.assertEqual(aborted[0]["reason"], "smtp_daily_limit")
         fails = [e for e in captured if e["event"] == "send_fail"]
         self.assertEqual(len(fails), 1)
 

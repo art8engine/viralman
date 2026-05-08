@@ -101,10 +101,17 @@ URL이 있으면 owner/repo 슬러그에서 키워드를 1차 추정한다 (예:
 
 | 옵션 | 설명 |
 |---|---|
-| 100 (recommended for first try) | 첫 발송에 적합. 빠른 검증용. |
-| 500 | 표준 캠페인. GraphQL 버킷 ~1,500 pt + REST ~1,000 req 사용. |
-| 1000 | broader reach. GraphQL ~3,000 pt + REST ~2,100 req. |
-| 1500 | 최대치. 별도 GraphQL+REST 듀얼 버킷 모두 70% 마진 안에 들어감 (3x oversample × ~1 GraphQL pt + ~1 REST PushEvent fallback req = ~4,500 pt + ~3,150 req). |
+| 100 (recommended for first try) | 첫 발송. 무료 Gmail / Workspace / 어떤 SMTP 든 안전. |
+| 500 | **무료 @gmail.com 일일 한도와 정확히 일치** (500 msg/24h rolling). 1회 발송으로 끝낼 수 있는 최대치. |
+| 1000 | Workspace 권장 (2,000/24h 한도 내). 무료 Gmail 이면 2일 분할 필요. |
+| 1500 | GitHub 수집 캡 최대치 (GraphQL+REST 듀얼 버킷). 무료 Gmail 이면 3일 분할, Workspace 이면 1일 가능. |
+| Other | 사용자 직접 입력 (1-1500). 1500 초과는 GitHub rate-limit 에 막혀 수집 stall. |
+
+> **두 가지 캡이 별개**:
+> - **수집 캡 = 1,500 / 1회 실행** — GitHub API 한도 (GraphQL 5,000 pt/hr + REST 5,000 req/hr) 기반.
+> - **발송 캡 = SMTP 정책** — 무료 @gmail.com 은 **500 msg / rolling 24h**, Google Workspace 는 **2,000 msg / 24h** per user.
+>
+> 수집 1,500 했더라도 무료 Gmail 로는 일일 500 까지만 실제 발송 가능. step_send 가 한도 도달 시 자동 abort 하고 `send_aborted` 이벤트 + stderr 한국어 메시지 출력하며 미발송분을 `unprocessed` 카운트로 분리합니다 (rolling 24h reset 후 retry).
 | Other | 사용자 직접 입력 (1-1500). 1500 초과는 두 버킷 중 하나가 rate-limit 에 막혀 stall. |
 
 ---
@@ -227,6 +234,8 @@ SUBJECT: <subject>
 - **절대로** 사용자가 "발송해줘" 같이 명시적 OK를 주기 전에 `--dry-run` 없는 send-from-recipients 를 호출하지 않는다.
 - **절대로** unsubscribe footer 또는 List-Unsubscribe 헤더를 제거하지 않는다.
 - **절대로** `--max-users 1500` 초과값을 넘기지 않는다 (GraphQL 5,000 pt/hr + REST 5,000 req/hr 듀얼 버킷에서 3x oversample 까지 안전한 한계). 더 큰 캠페인이 필요하면 보조 GitHub 계정 토큰으로 분할 실행하도록 안내.
+- 수집 후 발송 시 **SMTP 일일 한도** 도 안내한다: 무료 @gmail.com 500/24h, Workspace 2,000/24h. 수집한 인원이 일일 한도 초과면 step_send 가 자동 abort 후 `unprocessed` 분리 — rolling 24h reset 시점 알려주고 retry-recipients 파일 사용 안내.
+- 실시간 발송 진행률을 보고 싶으면 별도 터미널/탭에서 `./scripts/gitmail_watch.py --auto` (newest /tmp/gitmail_send_*.json 자동 선택). 한 줄 carriage-return 디스플레이; `--once` 모드는 statusLine 통합용 1회 출력.
 - **절대로** `~/.viralman/.env` 내용을 읽거나 출력하지 않는다.
 - **절대로** 이메일 주소를 발명하거나 추측하지 않는다. GitHub Users API / PushEvent 반환값만 사용.
 - **절대로** 실패한 발송을 자동 재시도하지 않는다.

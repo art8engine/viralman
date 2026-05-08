@@ -101,10 +101,11 @@ URL이 있으면 owner/repo 슬러그에서 키워드를 1차 추정한다 (예:
 
 | 옵션 | 설명 |
 |---|---|
-| 50 (recommended for first try) | 첫 발송에 적합. 빠른 검증용. |
-| 100 | 표준. SMTP rate limit 영향 적음. |
-| 200 | broader reach. 발송에 ~10분 (30/min 기준). |
-| Other | 사용자 직접 입력 (1-10000). |
+| 100 (recommended for first try) | 첫 발송에 적합. 빠른 검증용. |
+| 500 | 표준 캠페인. GraphQL 버킷 ~1,500 pt + REST ~1,000 req 사용. |
+| 1000 | broader reach. GraphQL ~3,000 pt + REST ~2,100 req. |
+| 1500 | 최대치. 별도 GraphQL+REST 듀얼 버킷 모두 70% 마진 안에 들어감 (3x oversample × ~1 GraphQL pt + ~1 REST PushEvent fallback req = ~4,500 pt + ~3,150 req). |
+| Other | 사용자 직접 입력 (1-1500). 1500 초과는 두 버킷 중 하나가 rate-limit 에 막혀 stall. |
 
 ---
 
@@ -225,7 +226,7 @@ SUBJECT: <subject>
 
 - **절대로** 사용자가 "발송해줘" 같이 명시적 OK를 주기 전에 `--dry-run` 없는 send-from-recipients 를 호출하지 않는다.
 - **절대로** unsubscribe footer 또는 List-Unsubscribe 헤더를 제거하지 않는다.
-- **절대로** `--max-users 10000` 초과값을 넘기지 않는다.
+- **절대로** `--max-users 1500` 초과값을 넘기지 않는다 (GraphQL 5,000 pt/hr + REST 5,000 req/hr 듀얼 버킷에서 3x oversample 까지 안전한 한계). 더 큰 캠페인이 필요하면 보조 GitHub 계정 토큰으로 분할 실행하도록 안내.
 - **절대로** `~/.viralman/.env` 내용을 읽거나 출력하지 않는다.
 - **절대로** 이메일 주소를 발명하거나 추측하지 않는다. GitHub Users API / PushEvent 반환값만 사용.
 - **절대로** 실패한 발송을 자동 재시도하지 않는다.

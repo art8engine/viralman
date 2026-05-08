@@ -28,7 +28,7 @@ viralman                 # opens http://localhost:8765
 
 - **Multi-platform drafts** — `/viral` turns one intent into Reddit / X / LinkedIn drafts that don't sound like a chatbot.
 - **Local dashboard** — black 4-step wizard. Project → Generate → Targets → Send. One unified login at the top.
-- **gitmail outreach** — find GitHub repos like yours, walk their stargazers, send each a short personalized note. Up to 10,000 recipients with a one-click unsubscribe link baked in.
+- **gitmail outreach** — find GitHub repos like yours, walk their stargazers, send each a short personalized note. Up to 1,500 recipients per run (uses GraphQL bulk profile lookup + REST PushEvent fallback to fit GitHub's two separate 5,000/hr buckets); one-click unsubscribe link baked in.
 - **AI-tell sniffer** — ~30 heuristics scan every draft for clichés, em-dash floods, balanced tricolons, and missing anchors. Three rewrite passes; refuses to auto-post a still-flagged draft.
 - **OAuth or manual** — sign in to X / Reddit / LinkedIn from the dashboard, or paste tokens. Secrets pipe through `read -s` and never enter the LLM context.
 - **Multi-LLM** — Claude, OpenAI, or Gemini, your choice (auto-detected from saved keys).

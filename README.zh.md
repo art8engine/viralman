@@ -28,7 +28,7 @@ viralman                 # 自动打开 http://localhost:8765
 
 - **多平台草稿** —— `/viral` 一句意图同时生成 Reddit / X / LinkedIn 草稿，读起来不像 AI。
 - **本地 dashboard** —— 黑色风格 4 步向导：项目 → 生成 → 目标 → 发送。登录入口顶部统一。
-- **gitmail 外联** —— 在 GitHub 找到和你最像的仓库，遍历其 stargazer，给每人发一封简短个性化邮件。最多 1 万收件人，自带一键退订。
+- **gitmail 外联** —— 在 GitHub 找到和你最像的仓库，遍历其 stargazer，给每人发一封简短个性化邮件。每次最多 1,500 收件人（GraphQL 批量获取 profile + REST PushEvent 兜底，同时利用 GitHub 两个独立的 5,000/hr 配额），自带一键退订。
 - **AI 痕迹 sniffer** —— 约 30 条规则扫描每份草稿：陈词滥调、em-dash 滥用、平衡三段式、缺锚点。最多 3 轮重写，仍标红就拒绝自动发布。
 - **OAuth 或手动** —— dashboard 登录 X / Reddit / LinkedIn，或粘贴 token。密码永远不进 LLM 上下文。
 - **多 LLM** —— Claude / OpenAI / Gemini 任选，按已存的 API key 自动识别。

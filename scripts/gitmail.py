@@ -39,6 +39,7 @@ import argparse
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -153,13 +154,20 @@ def step_recipients(
             last_log[0] = now
             _emit("recipients_progress", count=p["count"], target=p["target"])
 
-    by_login: Dict[str, str] = {}
-    out: List[Dict[str, str]] = []
+    # Phase 1 — enumerate candidate stargazers across all repos (REST stargazers
+    # endpoint, ~100 stargazers per request).
+    #
+    # Oversample 3x: GitHub's GraphQL budget is 5,000 points/hr, ~1 point per
+    # user in a batched query. With 3x and max_users up to 1,500 we stay under
+    # 4,500 points, leaving headroom for retries.
+    target_candidates = max_users * 3
+    seen: set[str] = set()
+    candidates: List[tuple[str, str, str]] = []  # (login, html_url, source_repo)
     iters = [(r, github_search.iter_stargazers(r["full_name"],
                                                 max_users=max_users * 5,
                                                 token=token))
               for r in repos]
-    while iters and len(out) < max_users:
+    while iters and len(candidates) < target_candidates:
         next_iters = []
         for repo, it in iters:
             try:
@@ -167,29 +175,91 @@ def step_recipients(
             except StopIteration:
                 continue
             login = user["login"]
-            if login in by_login:
-                next_iters.append((repo, it))
-                continue
-            email = github_search.resolve_user_email(login, token=token)
-            if email:
-                by_login[login] = email
+            if login not in seen:
+                seen.add(login)
+                candidates.append((login, user.get("html_url", ""),
+                                    repo["full_name"]))
+            next_iters.append((repo, it))
+        iters = next_iters
+
+    _emit("candidates_collected", count=len(candidates))
+
+    cand_meta: Dict[str, tuple[str, str]] = {
+        login: (html, repo_name) for login, html, repo_name in candidates
+    }
+
+    # Phase 2a — GraphQL bulk profile fetch. Uses the GraphQL budget bucket
+    # (separate from REST), so it doesn't compete with PushEvent fallback below.
+    profiles = github_search.bulk_resolve_profile_data(
+        list(cand_meta.keys()), token=token, batch_size=100,
+    )
+    profile_hits = sum(1 for d in profiles.values() if d.get("email"))
+    _emit("graphql_profiles_done",
+          looked_up=len(profiles), email_found=profile_hits)
+
+    out: List[Dict[str, str]] = []
+    for login, data in profiles.items():
+        if len(out) >= max_users:
+            break
+        email = data.get("email")
+        if not email:
+            continue
+        html, repo_name = cand_meta[login]
+        out.append({
+            "login": login,
+            "email": email,
+            "starred_repo": repo_name,
+            "profile": html,
+        })
+        _on_progress({"count": len(out), "target": max_users, "login": login})
+
+    # Phase 2b — REST PushEvent mining for the remaining candidates. We pass
+    # `pre_fetched_name` from GraphQL so resolve_user_email skips the redundant
+    # /users/{login} GET and goes straight to /users/{login}/events/public —
+    # halving REST cost per fallback candidate.
+    if len(out) < max_users:
+        fallback_logins = [login for login in cand_meta
+                           if login not in {r["login"] for r in out}]
+
+        def _events(login: str) -> tuple[str, Optional[str]]:
+            name = (profiles.get(login) or {}).get("name")
+            try:
+                email = github_search.resolve_user_email(
+                    login, token=token, use_events=True,
+                    pre_fetched_name=name,
+                )
+            except Exception:
+                email = None
+            return (login, email)
+
+        pool = ThreadPoolExecutor(max_workers=8)
+        try:
+            futures = [pool.submit(_events, login) for login in fallback_logins]
+            for fut in as_completed(futures):
+                login, email = fut.result()
+                if not email:
+                    continue
+                html, repo_name = cand_meta[login]
                 out.append({
                     "login": login,
                     "email": email,
-                    "starred_repo": repo["full_name"],
-                    "profile": user.get("html_url", ""),
+                    "starred_repo": repo_name,
+                    "profile": html,
                 })
                 _on_progress({"count": len(out), "target": max_users,
                               "login": login})
                 if len(out) >= max_users:
                     break
-            else:
-                by_login[login] = ""
-            next_iters.append((repo, it))
-        iters = next_iters
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     _emit("recipients_done", count=len(out))
-    return out
+    return out[:max_users]
+
+
+class _SafeFormatDict(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
 
 
 def step_compose(
@@ -204,10 +274,36 @@ def step_compose(
     tone: Optional[str] = None,
     emphasis: Optional[str] = None,
     subject_style: Optional[str] = None,
+    prewritten_subject: Optional[str] = None,
+    prewritten_body: Optional[str] = None,
 ) -> List[Dict[str, str]]:
-    """Returns each recipient enriched with subject+body."""
+    """Returns each recipient enriched with subject+body.
+
+    If both prewritten_subject and prewritten_body are provided, skip the LLM
+    entirely and per-recipient placeholder-substitute {login}, {starred_repo},
+    {project_name}, {project_url}. This is the path for users who don't want
+    to set an Anthropic/OpenAI API key.
+    """
+    if prewritten_subject is not None and prewritten_body is not None:
+        _emit("compose_start", count=len(recipients), template_only=True,
+              prewritten=True)
+        out: List[Dict[str, str]] = []
+        for i, r in enumerate(recipients):
+            ctx = _SafeFormatDict(
+                login=r["login"],
+                starred_repo=r["starred_repo"],
+                project_name=project_name,
+                project_url=project_url,
+            )
+            subj = prewritten_subject.format_map(ctx)
+            body = prewritten_body.format_map(ctx)
+            out.append({**r, "subject": subj, "body": body})
+            _emit("compose_progress", count=i + 1, target=len(recipients))
+        _emit("compose_done", count=len(out))
+        return out
+
     _emit("compose_start", count=len(recipients), template_only=template_only)
-    out: List[Dict[str, str]] = []
+    out = []
     for i, r in enumerate(recipients):
         if template_only and i > 0:
             # Reuse the first composition; only swap @login and starred_repo
@@ -403,7 +499,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 2
 
     seed_repos = _split_csv(getattr(args, "seed_repos", None))
-    max_users = min(args.max_users, 10000)
+    max_users = min(args.max_users, 1500)
 
     if seed_repos:
         analysis: Dict[str, Any] = {"summary": "", "keywords": [],
@@ -479,7 +575,7 @@ def cmd_recipients(args: argparse.Namespace) -> int:
         return 2
 
     seed_repos = _split_csv(getattr(args, "seed_repos", None))
-    max_users = min(args.max_users, 10000)
+    max_users = min(args.max_users, 1500)
 
     if seed_repos:
         recipients = _collect_from_seed_repos(creds, seed_repos,
@@ -558,6 +654,20 @@ def cmd_send_from_recipients(args: argparse.Namespace) -> int:
 
     pitch = args.pitch or (args.description or "")[:200]
 
+    prewritten_subject = getattr(args, "prewritten_subject", None)
+    prewritten_body_path = getattr(args, "prewritten_body", None)
+    prewritten_body = None
+    if prewritten_body_path:
+        try:
+            prewritten_body = Path(prewritten_body_path).read_text(encoding="utf-8")
+        except OSError as e:
+            _emit("fatal", reason=f"--prewritten-body read failed: {e}")
+            return 2
+    if (prewritten_subject is None) != (prewritten_body is None):
+        _emit("fatal",
+              reason="--prewritten-subject and --prewritten-body must be used together")
+        return 2
+
     composed = step_compose(
         creds, recipients,
         project_name=args.project_name,
@@ -568,6 +678,8 @@ def cmd_send_from_recipients(args: argparse.Namespace) -> int:
         tone=args.tone,
         emphasis=args.emphasis,
         subject_style=getattr(args, "subject_style", None),
+        prewritten_subject=prewritten_subject,
+        prewritten_body=prewritten_body,
     )
 
     result = step_send(
@@ -667,6 +779,15 @@ def main() -> int:
     add_compose_voice(sfr)
     sfr.add_argument("--dry-run", action="store_true")
     sfr.add_argument("--template-only", action="store_true")
+    sfr.add_argument("--prewritten-subject", default=None,
+                      help="Skip LLM compose: use this exact subject for every "
+                           "recipient. Supports {login}, {starred_repo}, "
+                           "{project_name}, {project_url} placeholders. "
+                           "Requires --prewritten-body.")
+    sfr.add_argument("--prewritten-body", default=None,
+                      help="Skip LLM compose: path to a UTF-8 file whose "
+                           "contents are used as the body for every recipient. "
+                           "Same placeholders as --prewritten-subject.")
     sfr.add_argument("--unsubscribe-base", default="http://localhost:8765")
     sfr.add_argument("--reply-to", default=None)
 

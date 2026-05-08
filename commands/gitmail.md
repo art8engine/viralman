@@ -22,7 +22,7 @@ argument-hint: "<project-url|description> [--tone '...'] [--emphasis '...'] [--s
    - **Q1 Language**: 한국어 / English / 中文 / 日本語
    - **Q2 Subject 스타일**: `auto` / `headline` / `tag` / `simple` (각 옵션에 preview 텍스트 첨부)
    - **Q3 타깃팅 전략**: 추천 시드 (Claude 즉석 추천) / 키워드 검색 / 자동
-   - **Q4 인원**: 50 / 100 / 200 / Other
+   - **Q4 인원**: 100 / 500 / 1000 / 1500 (Other 는 자동 추가, 1-1500 범위). 1500 이 GraphQL+REST 듀얼 버킷 (각 5,000/hr) 안에서 3x oversample 로 안전하게 채울 수 있는 상한.
 4. **Step 3 — 수집** — `.venv/bin/python ./scripts/gitmail.py recipients ...` 실행. JSONL 스트림 끝의 recipients 배열만 잘라 `/tmp/gitmail_recipients_clean.json` 으로 저장. 8명까지만 미리보기로 출력.
 5. **Step 4 — Fast dry-run preview** — `send-from-recipients --template-only --dry-run` 으로 LLM 1번 호출 → 첫 본문 출력. (50명 dry-run 13분 → ~16초 단축의 핵심.)
 6. **Step 5 — 실발송 대기** — 사용자가 "발송해줘" / "send" / "go" 같이 명시적 OK 줄 때만 `--template-only` (dry-run 제외) 로 실행. 피드백을 주면 인자만 바꿔 Step 4 재실행.
@@ -33,7 +33,7 @@ argument-hint: "<project-url|description> [--tone '...'] [--emphasis '...'] [--s
 
 - 사용자가 명시적으로 "발송해줘" 의사를 보이기 전에는 절대 `--dry-run` 없는 `send-from-recipients` 를 호출하지 않는다.
 - unsubscribe footer / `List-Unsubscribe` 헤더는 절대 제거하지 않는다.
-- `--max-users` 는 1-10000 범위 내에서만 허용.
+- `--max-users` 는 1-1500 범위 내에서만 허용 (GraphQL 5,000 pt/hr + REST 5,000 req/hr 듀얼 버킷에서 안전한 상한; 그 이상은 둘 중 하나가 rate-limit 에 막혀 stall).
 - `~/.viralman/.env` 값은 절대 읽거나 출력하지 않는다 (`--show-keys` 만 안전).
 - 이메일 주소를 발명하지 않는다. GitHub Users API / PushEvent 반환값만 사용.
 - 실패 발송 자동 재시도 금지.

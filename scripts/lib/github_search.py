@@ -243,17 +243,26 @@ def resolve_user_email(
     *,
     token: Optional[str] = None,
     use_events: bool = True,
+    pre_fetched_name: Optional[str] = None,
 ) -> Optional[str]:
-    """Best-effort. Returns None if no plausible email is found."""
-    status, headers, data = _json(f"/users/{login}", token=token)
-    _respect_rate_limit(headers)
-    if status == 200 and isinstance(data, dict):
-        email = data.get("email")
-        if email and not NOREPLY_RE.search(email):
-            return email
-        name = data.get("name") or login
+    """Best-effort. Returns None if no plausible email is found.
+
+    `pre_fetched_name` skips the REST profile GET when the caller already
+    knows the user's display name (e.g. from a prior GraphQL query that
+    returned `null` email). Saves 1 REST request per fallback candidate.
+    """
+    if pre_fetched_name is None:
+        status, headers, data = _json(f"/users/{login}", token=token)
+        _respect_rate_limit(headers)
+        if status == 200 and isinstance(data, dict):
+            email = data.get("email")
+            if email and not NOREPLY_RE.search(email):
+                return email
+            name = data.get("name") or login
+        else:
+            name = login
     else:
-        name = login
+        name = pre_fetched_name or login
 
     if not use_events:
         return None
@@ -289,6 +298,91 @@ def resolve_user_email(
 
 
 # --------------------------------------------------------------------------- #
+# GraphQL bulk lookup                                                          #
+# --------------------------------------------------------------------------- #
+
+
+GRAPHQL_URL = f"{GH_API}/graphql"
+
+
+def bulk_resolve_profile_data(
+    logins: List[str],
+    *,
+    token: Optional[str] = None,
+    batch_size: int = 100,
+    timeout: int = 30,
+) -> Dict[str, Dict[str, Optional[str]]]:
+    """Fetch public profile {email, name} for many GitHub logins via GraphQL.
+
+    GraphQL has a 5,000-point/hr budget that's separate from REST's 5,000-req/hr,
+    and one batched query covers up to `batch_size` users at ~1 point each. So
+    we can resolve thousands of profile records per hour without touching the
+    REST budget that callers reserve for PushEvent fallback.
+
+    Returns {login: {"email": str_or_None, "name": str_or_None}}. Email is None
+    if either the user has no public email or it's a noreply mask. The `name`
+    is included so PushEvent fallback callers can verify commit authorship
+    without re-fetching the profile via REST.
+    """
+    out: Dict[str, Dict[str, Optional[str]]] = {}
+    if not logins:
+        return out
+
+    for start in range(0, len(logins), batch_size):
+        batch = logins[start:start + batch_size]
+        # GraphQL aliases must match /[A-Za-z][A-Za-z_0-9]*/, so use index-based
+        # aliases (logins can contain hyphens). JSON-escape the login string.
+        parts = []
+        for i, login in enumerate(batch):
+            esc = json.dumps(login)
+            parts.append(f"u{i}: user(login: {esc}) {{ login email name }}")
+        query = "query { " + " ".join(parts) + " }"
+        body = json.dumps({"query": query}).encode("utf-8")
+
+        req = urllib.request.Request(
+            GRAPHQL_URL,
+            data=body,
+            method="POST",
+        )
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "application/json")
+        req.add_header("User-Agent", "viralman-gitmail/0.2")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                headers = dict(r.headers)
+                payload = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            print(f"graphql: HTTP {e.code} on batch {start}-{start+len(batch)}",
+                  file=sys.stderr)
+            for login in batch:
+                out.setdefault(login, {"email": None, "name": None})
+            continue
+        except Exception as e:
+            print(f"graphql: network error on batch {start}: {e}",
+                  file=sys.stderr)
+            for login in batch:
+                out.setdefault(login, {"email": None, "name": None})
+            continue
+
+        _respect_rate_limit(headers)
+
+        data = payload.get("data") or {}
+        for i, login in enumerate(batch):
+            user = data.get(f"u{i}")
+            if not isinstance(user, dict):
+                out[login] = {"email": None, "name": None}
+                continue
+            email = user.get("email")
+            if email and NOREPLY_RE.search(email):
+                email = None
+            out[login] = {"email": email, "name": user.get("name")}
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Smoke-test CLI                                                              #
 # --------------------------------------------------------------------------- #
 
@@ -304,6 +398,9 @@ def _main() -> int:
     s.add_argument("--keyword", action="append", default=[])
     s.add_argument("--limit", type=int, default=5)
     sub.add_parser("ratelimit")
+    bg = sub.add_parser("bulkemail",
+                         help="GraphQL smoke: bulk-resolve emails for given logins")
+    bg.add_argument("logins", nargs="+", help="GitHub logins")
     args = p.parse_args()
 
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
@@ -328,6 +425,10 @@ def _main() -> int:
     if args.cmd == "ratelimit":
         status, _, data = _json("/rate_limit", token=token)
         print(json.dumps({"status": status, "rate_limit": data}, indent=2))
+        return 0
+    if args.cmd == "bulkemail":
+        result = bulk_resolve_profile_data(args.logins, token=token)
+        print(json.dumps({k: v["email"] for k, v in result.items()}, indent=2))
         return 0
     return 2
 

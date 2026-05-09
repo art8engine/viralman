@@ -110,7 +110,7 @@ def _build_send_args(**overrides) -> argparse.Namespace:
         emphasis=None,
         dry_run=True,
         template_only=False,
-        unsubscribe_base="http://localhost:8765",
+        unsubscribe_base="https://test.example.com",
         reply_to=None,
     )
     defaults.update(overrides)
@@ -135,7 +135,7 @@ def _build_run_args(**overrides) -> argparse.Namespace:
         emphasis=None,
         dry_run=True,
         template_only=False,
-        unsubscribe_base="http://localhost:8765",
+        unsubscribe_base="https://test.example.com",
         reply_to=None,
     )
     defaults.update(overrides)

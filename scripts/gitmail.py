@@ -112,6 +112,46 @@ def _profile_extras(data: Dict[str, Any]) -> Dict[str, Any]:
     return {k: data.get(k) for k in github_search.PROFILE_EXTRAS_KEYS}
 
 
+def _is_localhost_base(url: str) -> bool:
+    s = (url or "").strip().lower()
+    return ("//localhost" in s or "//127.0.0.1" in s
+            or s.startswith("localhost") or s.startswith("127.0.0.1"))
+
+
+def _resolve_unsubscribe_base(
+    args: argparse.Namespace,
+    creds: Dict[str, str],
+    *,
+    dry_run: bool,
+) -> tuple[Optional[str], Optional[str]]:
+    """Pick the URL prefix baked into every recipient's `Unsubscribe:` link.
+
+    Resolution: a non-localhost CLI `--unsubscribe-base` wins; otherwise
+    `VIRALMAN_UNSUBSCRIBE_BASE` from `~/.viralman/.env`; otherwise the CLI
+    default (localhost). On a real send, refuse if the resolved base is
+    localhost — recipients can't click it. Returns (base, error_message);
+    `error_message` is non-None only for the abort case.
+    """
+    explicit = (getattr(args, "unsubscribe_base", "") or "").strip()
+    from_creds = (creds.get("VIRALMAN_UNSUBSCRIBE_BASE") or "").strip()
+
+    if explicit and not _is_localhost_base(explicit):
+        base = explicit
+    elif from_creds and not _is_localhost_base(from_creds):
+        base = from_creds
+    else:
+        base = explicit or from_creds or "http://localhost:8765"
+
+    if not dry_run and _is_localhost_base(base):
+        return None, (
+            "unsubscribe base resolves to localhost — recipients cannot click "
+            "that link. Save a public URL once via "
+            "`./scripts/save_creds.py --set VIRALMAN_UNSUBSCRIBE_BASE=https://your-host` "
+            "or pass `--unsubscribe-base https://your-host` on this run."
+        )
+    return base, None
+
+
 def step_analyse(creds: Dict[str, str], description: str,
                   *, provider: Optional[str] = None,
                   sink: EventSink = _stdout_sink) -> Dict[str, Any]:
@@ -706,9 +746,16 @@ def cmd_run(args: argparse.Namespace) -> int:
         headline_benefit=str(analysis.get("headline_benefit") or ""),
     )
 
+    unsubscribe_base, ub_err = _resolve_unsubscribe_base(
+        args, creds, dry_run=args.dry_run,
+    )
+    if ub_err:
+        _emit("fatal", reason=ub_err)
+        return 2
+
     result = step_send(
         creds, composed,
-        unsubscribe_base=args.unsubscribe_base,
+        unsubscribe_base=unsubscribe_base,
         dry_run=args.dry_run,
         reply_to=args.reply_to,
     )
@@ -853,9 +900,16 @@ def cmd_send_from_recipients(args: argparse.Namespace) -> int:
         prewritten_body=prewritten_body,
     )
 
+    unsubscribe_base, ub_err = _resolve_unsubscribe_base(
+        args, creds, dry_run=args.dry_run,
+    )
+    if ub_err:
+        _emit("fatal", reason=ub_err)
+        return 2
+
     result = step_send(
         creds, composed,
-        unsubscribe_base=args.unsubscribe_base,
+        unsubscribe_base=unsubscribe_base,
         dry_run=args.dry_run,
         reply_to=args.reply_to,
     )

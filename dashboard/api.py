@@ -413,7 +413,22 @@ def _run_send_job(job: "GitmailJob") -> None:
         subject_template = (job.args.get("subject")
                              or f"about {project_name or 'your project'}")
         dry_run = bool(job.args.get("dry_run", True))
-        unsubscribe_base = job.args.get("_url_root") or "http://localhost:8765"
+
+        from gitmail import _is_localhost_base
+        url_root = job.args.get("_url_root") or "http://localhost:8765"
+        from_creds = (creds.get("VIRALMAN_UNSUBSCRIBE_BASE") or "").strip()
+        if from_creds and not _is_localhost_base(from_creds):
+            unsubscribe_base = from_creds
+        else:
+            unsubscribe_base = url_root
+        if not dry_run and _is_localhost_base(unsubscribe_base):
+            job_sink("fatal", reason=(
+                "unsubscribe base resolves to localhost — recipients cannot "
+                "click that link. Save a public URL once via "
+                "`./scripts/save_creds.py --set "
+                "VIRALMAN_UNSUBSCRIBE_BASE=https://your-host`."
+            ))
+            return
 
         # Normalise recipient shape — step_compose expects a starred_repo on
         # every row, so backfill empty strings rather than KeyError downstream.

@@ -199,6 +199,21 @@ read -rs -p 'GEMINI_API_KEY: ' s && printf '%s' "$s" | \
   ./scripts/save_creds.py --stdin GEMINI_API_KEY; unset s; echo
 ```
 
+**Public unsubscribe base (required for real sends, optional for dry-runs)** —
+every outgoing mail carries an `Unsubscribe: <base>/u/<token>` link. If
+`VIRALMAN_UNSUBSCRIBE_BASE` is unset and the user runs a real send,
+gitmail aborts with a clear error rather than emit a localhost link
+recipients can't click. Save once:
+
+```bash
+./scripts/save_creds.py --set VIRALMAN_UNSUBSCRIBE_BASE=https://your-domain.example.com
+```
+
+The host needs the dashboard's `/u/<token>` route reachable on the open
+internet. If the user doesn't have a public deployment yet, point them at
+options like a tunnel (`cloudflared tunnel`, `ngrok`) or skipping the
+real-send step until they do — dry-runs work without it.
+
 Verify end-to-end: `./scripts/gitmail.py analyse "A quick test project"`.
 Done: "gitmail is hooked up — go to `http://localhost:8765/gitmail` and start
 a dry-run job."

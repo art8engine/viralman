@@ -132,8 +132,8 @@ behind the dashboard's explicit "post" / "send" buttons for a reason.
 
 ## Boundaries
 
-- The skill never reads `~/.viralman/.env`. Only `save_creds.py` /
-  `creds.py` / `post_*.py` / `gitmail.py` do.
+- The skill never reads `~/.viralman/.env`. Only `viralman save-creds` /
+   / `viralman post-*` / `viralman gitmail` do.
 - The skill never starts the server with `--debug` unless the user asked —
   the reloader can race with the OAuth state in `session`.
 - The skill never bypasses the "I confirm" checkbox on the Gitmail page.

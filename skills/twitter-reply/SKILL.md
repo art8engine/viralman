@@ -20,22 +20,16 @@ If the user says only "트위터에 올려줘" / "x에 올려줘" — that's the
 
 ## Pre-flight
 
-**Script location guard (run this first).** The skill operates against `./scripts/save_creds.py` and `./scripts/twitter_reply.py` in the current working directory (the viralman repo). If those files are not present (e.g. invoked from another project), **do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` — the permission layer reads any traversal of that path as credential discovery and will block. Instead call `AskUserQuestion` **once** with:
+**Binary check (run this first).** The skill drives the `viralman` console-command and its subcommands (`viralman twitter-reply`, `viralman save-creds`). The binary is created by `/viralman-setup` Step 0; if `which viralman` is empty, route the user to `/viralman-setup` and stop. **Do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` — the permission layer flags that traversal as credential discovery and blocks it. There is no longer a "switch to the repo" requirement: `viralman` works from any cwd.
 
-- "Switch to the viralman repo and rerun" — stop now; user will `cd` and reinvoke.
-- "Cancel" — abort cleanly.
-
-Pick the first option as the default. Only proceed past this gate when `test -f ./scripts/save_creds.py` succeeds.
-
-**Permission denial protocol.** If a Bash invocation in this skill (e.g. `./scripts/twitter_reply.py find` or `./scripts/twitter_reply.py reply`) is denied by the Claude Code permission layer or auto-mode classifier — typical classifier reasons include "automated reply at scale" or "unsolicited engagement", even though the run is the user-initiated twitter-reply flow — **do not** attempt to self-edit `~/.claude/settings.json` or `.claude/settings.local.json`. Claude Code's harness blocks agent self-permission-grants and the second attempt will be denied for that reason instead. Surface the snippet to the user verbatim and stop:
+**Permission denial protocol.** If a Bash invocation in this skill (e.g. `viralman twitter-reply find` or `viralman twitter-reply reply`) is denied by the Claude Code permission layer or auto-mode classifier — typical classifier reasons include "automated reply at scale" or "unsolicited engagement", even though the run is the user-initiated twitter-reply flow — **do not** attempt to self-edit `~/.claude/settings.json` or `.claude/settings.local.json`. Claude Code's harness blocks agent self-permission-grants and the second attempt will be denied for that reason instead. Surface the snippet to the user verbatim and stop:
 
 ```
 명령이 권한 레이어에 막혔습니다. ~/.claude/settings.json 의 permissions.allow
 배열에 아래를 추가하시면 (한 번만 paste, 새 세션부터 적용) 다음부터는
 twitter-reply 명령들이 매번 묻지 않고 바로 진행됩니다:
 
-  "Bash(./scripts/twitter_reply.py:*)",
-  "Bash(./scripts/save_creds.py:*)"
+  "Bash(viralman:*)"
 
 자세한 안내는 /viralman-setup의 Step 5 참조. auto-mode classifier 는 별개
 레이어라 실제 reply 발송 같은 명령은 위 룰을 추가해도 한 번 다이얼로그가
@@ -44,7 +38,7 @@ twitter-reply 명령들이 매번 묻지 않고 바로 진행됩니다:
 
 Wait for the user to paste and rerun; do not retry the denied command in the same session.
 
-Once the scripts are local, run `./scripts/save_creds.py --show-keys` and confirm:
+Run `viralman save-creds --show-keys` and confirm:
 
 - `TWITTER_OAUTH2_BEARER` — required for both search (`tweet.read`) and reply (`tweet.write`). The dashboard PKCE login covers both scopes.
 - one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`, or detect Claude Code CLI via `which claude` (used to compose per-candidate reply bodies).
@@ -102,7 +96,7 @@ Follow `skills/copy-prep/SKILL.md` §Language picker if the reply needs a non-de
 Run once after the batch question:
 
 ```bash
-.venv/bin/python ./scripts/twitter_reply.py find \
+viralman twitter-reply find \
   --query "$QUERY" \
   --keywords "$KEYWORDS" \
   --lang "$LANG" \
@@ -141,7 +135,7 @@ For each candidate the user wants to engage:
 4. On send:
 
 ```bash
-echo "$REPLY_BODY" | .venv/bin/python ./scripts/twitter_reply.py reply \
+echo "$REPLY_BODY" | viralman twitter-reply reply \
   --tweet-id "$TWEET_ID" --body -
 ```
 

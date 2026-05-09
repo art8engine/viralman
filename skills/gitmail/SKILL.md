@@ -32,22 +32,16 @@ When the user enters via `/gitmail`, the argument parsing in `commands/gitmail.m
 
 ## Pre-flight
 
-**Script location guard (run this first).** The skill operates against `./scripts/save_creds.py` and `./scripts/gitmail.py` in the current working directory (the viralman repo). If those files are not present (e.g. invoked from another project), **do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` — the permission layer reads any traversal of that path as credential discovery and will block. Instead call `AskUserQuestion` **once** with:
+**Binary check (run this first).** The skill drives the `viralman` console-command and its subcommands (`viralman gitmail`, `viralman save-creds`, …). The binary is created by `/viralman-setup` Step 0; if `which viralman` is empty, route the user to `/viralman-setup` and stop. **Do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` to find scripts directly — the permission layer flags that traversal as credential discovery and blocks it. There is no longer a "switch to the repo" requirement: `viralman` works from any cwd.
 
-- "Switch to the viralman repo and rerun" — stop now; user will `cd` and reinvoke.
-- "Cancel" — abort cleanly.
-
-Pick the first option as the default. Only proceed past this gate when `test -f ./scripts/save_creds.py` succeeds.
-
-**Permission denial protocol.** If a Bash invocation in this skill (e.g. `./scripts/gitmail.py recipients --max-users 500`) is denied by the Claude Code permission layer or auto-mode classifier — typical reasons include "mass scraping" / "unsolicited cold email" classifications, even though the run is the user-initiated gitmail flow — **do not** attempt to self-edit `~/.claude/settings.json` or `.claude/settings.local.json`. Claude Code's harness blocks agent self-permission-grants and the second attempt will be denied for that reason instead. Surface the snippet to the user verbatim and stop:
+**Permission denial protocol.** If a Bash invocation in this skill (e.g. `viralman gitmail recipients --max-users 500`) is denied by the Claude Code permission layer or auto-mode classifier — typical reasons include "mass scraping" / "unsolicited cold email" classifications, even though the run is the user-initiated gitmail flow — **do not** attempt to self-edit `~/.claude/settings.json` or `.claude/settings.local.json`. Claude Code's harness blocks agent self-permission-grants and the second attempt will be denied for that reason instead. Surface the snippet to the user verbatim and stop:
 
 ```
 명령이 권한 레이어에 막혔습니다. ~/.claude/settings.json 의 permissions.allow
 배열에 아래를 추가하시면 (한 번만 paste, 새 세션부터 적용) 다음부터는
 가벼운 명령들이 매번 묻지 않고 바로 진행됩니다:
 
-  "Bash(./scripts/gitmail.py:*)",
-  "Bash(./scripts/save_creds.py:*)"
+  "Bash(viralman:*)"
 
 자세한 안내는 /viralman-setup의 Step 5 참조. auto-mode classifier 는 별개
 레이어라 대량 발송류는 위 룰을 추가해도 한 번 다이얼로그가 뜰 수 있습니다 —
@@ -56,7 +50,7 @@ Pick the first option as the default. Only proceed past this gate when `test -f 
 
 Wait for the user to paste and rerun; do not retry the denied command in the same session.
 
-Once the scripts are local, run `./scripts/save_creds.py --show-keys` and confirm (never print the values):
+Run `viralman save-creds --show-keys` and confirm (never print the values):
 
 - `GITHUB_TOKEN` — without it, GitHub API caps at 60 req/h.
 - one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`, **or** detect Claude Code CLI via `which claude`.
@@ -68,13 +62,13 @@ If anything is missing, route the user to `/viralman-setup gitmail` and stop. Ne
 
 ## Step 1 — Project intent capture
 
-Follow `skills/copy-prep/SKILL.md` §Project intent capture for the URL parsing rule, the keyword derivation, and the 2–3 line confirmation print. The struct it produces (`url` / `name` / `description` / `keyword`) feeds Step 3's `gitmail.py recipients --description "$DESC" --project-url "$URL"`.
+Follow `skills/copy-prep/SKILL.md` §Project intent capture for the URL parsing rule, the keyword derivation, and the 2–3 line confirmation print. The struct it produces (`url` / `name` / `description` / `keyword`) feeds Step 3's `viralman gitmail recipients --description "$DESC" --project-url "$URL"`.
 
 ---
 
-## Step 2 — Batch question (AskUserQuestion, exactly once, before any gitmail.py call)
+## Step 2 — Batch question (AskUserQuestion, exactly once, before any viralman gitmail call)
 
-**Critical: do not run `gitmail.py recipients` or `send-from-recipients` until the batch question is answered.** Letting the user decide upfront is the core of this skill.
+**Critical: do not run `viralman gitmail recipients` or `send-from-recipients` until the batch question is answered.** Letting the user decide upfront is the core of this skill.
 
 Use the `AskUserQuestion` tool to surface all four questions in one call (multiSelect=false on every one):
 
@@ -94,7 +88,7 @@ Use the 5-option table from `skills/copy-prep/SKILL.md` §Subject format presets
 |---|---|
 | Recommended seeds (Claude picks) | Claude proposes 3–5 domain-specific repos based on the Step 1 analysis. Highest accuracy. |
 | Keyword search | The user types keywords directly. Maximum flexibility. |
-| Auto (LLM extracts) | gitmail.py's `analyse` step decides on its own. Fast but average accuracy. |
+| Auto (LLM extracts) | viralman gitmail's `analyse` step decides on its own. Fast but average accuracy. |
 
 For "Recommended seeds" — Claude shows the chosen seed repos explicitly (e.g. "for JVM monitoring I'll go with jvm-profiling-tools/async-profiler, glowroot/glowroot, pinpoint-apm/pinpoint, prometheus/jmx_exporter"). Honor any pushback from the user; otherwise proceed.
 
@@ -137,7 +131,7 @@ The filter applies after the GraphQL bulk profile fetch, **before** the email-re
 After all four answers are in, run once:
 
 ```bash
-.venv/bin/python ./scripts/gitmail.py recipients \
+viralman gitmail recipients \
   --description "$DESC" \
   --project-url "$URL" \
   --max-users $MAX \
@@ -170,7 +164,7 @@ Generate a body preview with this list? (yes / adjust count / cancel)
 **Critical: combine `--template-only --dry-run` so only one LLM call composes the body, then it's reused for all N recipients in the preview.** Cuts a 50-recipient dry-run from 13 minutes down to ~16 seconds.
 
 ```bash
-.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+viralman gitmail send-from-recipients \
   --recipients-file /tmp/gitmail_recipients_clean.json \
   --project-name "$NAME" \
   --description "$DESC" \
@@ -185,7 +179,7 @@ Generate a body preview with this list? (yes / adjust count / cancel)
 **Manual path (Q2 = `manual` / 직접 입력하기)** — skip the LLM entirely:
 
 ```bash
-.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+viralman gitmail send-from-recipients \
   --recipients-file /tmp/gitmail_recipients_clean.json \
   --project-name "$NAME" \
   --description "$DESC" \
@@ -221,7 +215,7 @@ Showing the body counts as composition agreement, NOT send agreement. **Body agr
 Run only when the user has explicitly signaled intent to send:
 
 ```bash
-.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+viralman gitmail send-from-recipients \
   --recipients-file /tmp/gitmail_recipients_clean.json \
   --project-name "$NAME" \
   --description "$DESC" \
@@ -238,7 +232,7 @@ Keep `--template-only` — the body is the one the user already approved, so reg
 **Manual path (Q2 = `manual` / 직접 입력하기)** — same as Step 4 minus `--dry-run`, no LLM call:
 
 ```bash
-.venv/bin/python ./scripts/gitmail.py send-from-recipients \
+viralman gitmail send-from-recipients \
   --recipients-file /tmp/gitmail_recipients_clean.json \
   --project-name "$NAME" \
   --description "$DESC" \
@@ -282,7 +276,7 @@ Only return to Step 3 if the user signals they want to recollect (e.g. "use diff
 - **Never** strip the unsubscribe footer or the `List-Unsubscribe` header.
 - **Never** pass `--max-users` greater than 1500 (the safe GraphQL 5,000 pt/hr + REST 5,000 req/hr ceiling at 3x oversample). For larger campaigns, advise the user to split runs across a secondary GitHub account token.
 - When the collected count exceeds the **SMTP daily limit**, surface it: free @gmail.com 500/24h, Workspace 2,000/24h. `step_send` will auto-abort and split the remainder into `unprocessed` — tell the user when the rolling 24h window resets and how to use the retry-recipients file.
-- For live progress during a send, run `./scripts/gitmail_watch.py --auto` in a separate terminal/tab (auto-picks the newest /tmp/gitmail_send_*.json). Single-line carriage-return display; `--once` prints once and exits, suitable for a Claude Code statusLine command.
+- For live progress during a send, run `viralman gitmail-watch --auto` in a separate terminal/tab (auto-picks the newest /tmp/gitmail_send_*.json). Single-line carriage-return display; `--once` prints once and exits, suitable for a Claude Code statusLine command.
 - **Never** read or print the contents of `~/.viralman/.env`.
 - **Never** invent or guess email addresses. Use only what the GitHub Users API / PushEvent endpoints return.
 - **Never** auto-retry a failed send.

@@ -1,6 +1,6 @@
 ---
 description: Single entry point for viralman — bootstraps the package itself if not installed (clone, venv, flask, shim), auto-updates to the latest published version when a newer one is available, then walks the user through saving only the channel(s) they need (gitmail / twitter / reddit / linkedin). Plain-text token paste allowed with a security warning; recommended path is `read -s`.
-allowed-tools: Read, Bash(./scripts/save_creds.py:*), Bash(./scripts/lib/github_search.py:*), Bash(./scripts/gitmail.py:*), Bash(./scripts/check_creds.py:*), Bash(curl:*), Bash(python3:*), Bash(git pull:*), Bash(pipx:*), Bash(.venv/bin/pip:*), Bash(pipx list:*)
+allowed-tools: Read, Bash(viralman:*), Bash(curl:*), Bash(python3:*), Bash(git pull:*), Bash(pipx:*), Bash(.venv/bin/pip:*), Bash(pipx list:*)
 argument-hint: "[gitmail|twitter|reddit|linkedin] [--plain] [--check] [--reinstall]"
 ---
 
@@ -18,9 +18,9 @@ If omitted, ask the user once and wait for their answer. Do not guess or assume.
 Flags:
 - `--plain` : plain-text token mode — the user will paste credentials directly
   into the chat. Output the security warning once, then proceed with
-  `./scripts/save_creds.py --set KEY=VALUE`. Do not refuse.
+  `viralman save-creds --set KEY=VALUE`. Do not refuse.
 - `--check` : show the list of currently saved key names, then exit.
-  Runs `./scripts/save_creds.py --show-keys`. Does not reveal values.
+  Runs `viralman save-creds --show-keys`. Does not reveal values.
 - `--reinstall` : force-recreate the `.venv` even if it already exists (passed
   through to the Step 0 bootstrap). Use when dependencies are corrupted or a
   Python version change requires a fresh environment.
@@ -33,7 +33,7 @@ read-only and safe).
 If `--check` is passed (or the user types "check what's saved" / "show my keys"):
 
 ```bash
-./scripts/save_creds.py --show-keys
+viralman save-creds --show-keys
 ```
 
 Print the key list and stop. Do not proceed to any setup steps.
@@ -67,12 +67,12 @@ key / token directly into the chat (long alphanumeric string, Bearer prefix,
 > retained in the LLM context and the conversation log.
 >
 > Safer alternative:
-> `read -rs -p '<KEY>: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin <KEY>; unset s; echo`
+> `read -rs -p '<KEY>: ' s && printf '%s' "$s" | viralman save-creds --stdin <KEY>; unset s; echo`
 >
-> If you continue anyway, the token will be saved via `./scripts/save_creds.py --set <KEY>=<VALUE>`.
+> If you continue anyway, the token will be saved via `viralman save-creds --set <KEY>=<VALUE>`.
 
 Ask for confirmation ("Proceed? y/n"). After the user confirms, proceed with
-`./scripts/save_creds.py --set KEY=VALUE`. Do not show the warning again for
+`viralman save-creds --set KEY=VALUE`. Do not show the warning again for
 subsequent keys in the same session.
 
 ## Step 2 — run the channel-specific setup
@@ -91,11 +91,11 @@ After saving credentials, run the appropriate smoke test:
 
 ```bash
 # gitmail
-./scripts/lib/github_search.py ratelimit
-./scripts/gitmail.py analyse "A quick test project"
+curl -fsS -H "Authorization: Bearer $(grep ^GITHUB_TOKEN= ~/.viralman/.env | cut -d= -f2-)" https://api.github.com/rate_limit
+viralman gitmail analyse "A quick test project"
 
 # twitter / reddit / linkedin
-./scripts/check_creds.py --platform <category>
+viralman check-creds --platform <category>
 ```
 
 Report the outcome. If the check fails, surface the error and suggest the most
@@ -111,6 +111,6 @@ likely fix (see the skill file for common failure modes).
   conversation. Ask if missing.
 - Do not set up more than one channel per invocation.
 - Do not trigger a live send/post after setup completes, even as a "smoke test".
-  Read-only checks (`ratelimit`, `check_creds.py --platform`) are fine.
+  Read-only checks (`ratelimit`, `viralman check-creds --platform`) are fine.
 - If the user provides a category that is not one of the four listed, tell them
   which four are supported and ask again.

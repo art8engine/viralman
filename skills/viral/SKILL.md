@@ -131,9 +131,9 @@ For each platform with a `post` decision:
 
 | Platform | Script | Behavior |
 |---|---|---|
-| Reddit | `./scripts/post_reddit.py --subreddit <sub> --title <title> --body -` | Reads body from stdin, posts via PRAW, returns the permalink. |
-| LinkedIn | `./scripts/post_linkedin.py --body -` | Posts via UGC Posts API, returns the post URN/URL. |
-| X (Twitter) | `./scripts/post_twitter.py --body -` | If `TWITTER_BEARER` is set, posts via API; otherwise opens a `https://twitter.com/intent/tweet?text=…` URL via `open` and prints the URL for the user to one-click send. |
+| Reddit | `viralman post-reddit --subreddit <sub> --title <title> --body -` | Reads body from stdin, posts via PRAW, returns the permalink. |
+| LinkedIn | `viralman post-linkedin --body -` | Posts via UGC Posts API, returns the post URN/URL. |
+| X (Twitter) | `viralman post-twitter --body -` | If `TWITTER_BEARER` is set, posts via API; otherwise opens a `https://twitter.com/intent/tweet?text=…` URL via `open` and prints the URL for the user to one-click send. |
 
 Capture each script's stdout — the URL/URN — and print it. If a script exits non-zero, do **not** retry blindly: print the error, drop that platform, continue with others.
 

@@ -1,6 +1,6 @@
 ---
 description: Open the local viralman dashboard — three pages (Twitter / Reddit / Gitmail) sharing one project state, with a free-text "what to write" prompt driving per-platform AI drafts, unified top-right login, and a language switcher.
-allowed-tools: Bash(./bin/viralman:*), Bash(./scripts/dashboard.py:*), Bash(viralman:*), Bash(open:*), Bash(which:*), Bash(test:*), Bash(git rev-parse:*), Bash(ls:*), Bash(./.venv/bin/pip:*)
+allowed-tools: Bash(viralman:*), Bash(./bin/viralman:*), Bash(open:*), Bash(which:*), Bash(test:*), Bash(git rev-parse:*), Bash(ls:*), Bash(./.venv/bin/pip:*)
 argument-hint: "[--port 8765] [--no-browser] [--host 127.0.0.1]"
 ---
 

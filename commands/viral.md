@@ -1,6 +1,6 @@
 ---
 description: Generate non-AI-feeling viral / promo posts for Reddit, X, and LinkedIn, then publish them under the user's accounts after explicit confirmation.
-allowed-tools: Read, Write, Edit, Bash(./scripts/post_*.py:*), Bash(./scripts/setup.sh:*), Bash(open:*), Agent
+allowed-tools: Read, Write, Edit, Bash(viralman:*), Bash(open:*), Agent
 argument-hint: "<intent> [--mode growth-story|casual-hype|show-and-tell|contrarian-take] [--only reddit,x,linkedin] [--lang en|ko] [--yes]"
 ---
 

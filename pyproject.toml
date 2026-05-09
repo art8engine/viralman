@@ -37,7 +37,7 @@ Source   = "https://github.com/art8engine/viralman"
 Issues   = "https://github.com/art8engine/viralman/issues"
 
 [tool.setuptools]
-packages = ["dashboard", "viralman_cli"]
+packages = ["dashboard", "viralman_cli", "scripts", "scripts.lib"]
 include-package-data = true
 
 [tool.setuptools.package-data]

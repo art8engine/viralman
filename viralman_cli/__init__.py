@@ -2,17 +2,57 @@
 
 Mirrors bin/viralman but lives as an importable module so pyproject.toml's
 [project.scripts] can resolve it after pip install.
+
+Two modes:
+  - `viralman`                 → start the dashboard (legacy default).
+  - `viralman <subcommand> …`  → dispatch to scripts/<subcommand>.py with the
+    remaining argv. Lets users in any directory run gitmail / twitter-reply /
+    save-creds / etc. without needing a clone of the repo on hand.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+
+
+SUBCOMMAND_SCRIPTS = {
+    "gitmail":        "gitmail.py",
+    "twitter-reply":  "twitter_reply.py",
+    "save-creds":     "save_creds.py",
+    "check-creds":    "check_creds.py",
+    "post-twitter":   "post_twitter.py",
+    "post-reddit":    "post_reddit.py",
+    "post-linkedin":  "post_linkedin.py",
+    "gitmail-watch":  "gitmail_watch.py",
+}
+
+
+def _scripts_dir() -> Path:
+    """Locate scripts/ regardless of install path. Either packaged alongside
+    viralman_cli (after `pip install`) or sibling in a repo checkout."""
+    candidate = Path(__file__).resolve().parent.parent / "scripts"
+    if not (candidate / "gitmail.py").is_file():
+        raise RuntimeError(
+            f"viralman scripts/ not found at {candidate}. The package may "
+            "have been installed without scripts/. Reinstall:\n"
+            "  pip install --upgrade git+https://github.com/art8engine/viralman"
+        )
+    return candidate
+
+
+def _dispatch_subcommand(name: str, rest_argv: list[str]) -> int:
+    script = _scripts_dir() / SUBCOMMAND_SCRIPTS[name]
+    return subprocess.run(
+        [sys.executable, str(script), *rest_argv],
+        check=False,
+    ).returncode
 
 
 def _ensure_repo_on_path() -> Path:
@@ -42,16 +82,23 @@ def _open_browser_when_ready(url: str, *, delay: float = 1.0) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw and raw[0] in SUBCOMMAND_SCRIPTS:
+        return _dispatch_subcommand(raw[0], raw[1:])
+
     p = argparse.ArgumentParser(
         prog="viralman",
-        description="Start the viralman dashboard (twitter / reddit / gitmail).",
+        description=(
+            "Start the viralman dashboard, or dispatch a subcommand "
+            f"({', '.join(SUBCOMMAND_SCRIPTS)})."
+        ),
     )
     p.add_argument("--host", default=os.environ.get("VIRALMAN_HOST", "127.0.0.1"))
     p.add_argument("--port", type=int,
                     default=int(os.environ.get("VIRALMAN_PORT", "8765")))
     p.add_argument("--no-browser", action="store_true")
     p.add_argument("--debug", action="store_true")
-    args = p.parse_args(argv)
+    args = p.parse_args(raw)
 
     _ensure_repo_on_path()
 

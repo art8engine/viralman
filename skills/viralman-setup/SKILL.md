@@ -149,9 +149,9 @@ Print **once**:
 > retained in the LLM context and the conversation log.
 >
 > Safer alternative:
-> `read -rs -p '<KEY>: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin <KEY>; unset s; echo`
+> `read -rs -p '<KEY>: ' s && printf '%s' "$s" | viralman save-creds --stdin <KEY>; unset s; echo`
 >
-> If you continue anyway, the token will be saved via `./scripts/save_creds.py --set <KEY>=<VALUE>`.
+> If you continue anyway, the token will be saved via `viralman save-creds --set <KEY>=<VALUE>`.
 
 Ask "Proceed? y/n". On yes → use `--set` for this and all remaining keys.
 On no → present the `read -s` pipe pattern for each key instead.
@@ -167,18 +167,18 @@ Fine-grained token, Public Repositories read-only. Save:
 
 ```bash
 read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin GITHUB_TOKEN; unset s; echo
+  viralman save-creds --stdin GITHUB_TOKEN; unset s; echo
 ```
 
-Verify: `./scripts/lib/github_search.py ratelimit` (expect 5000 req/hr).
+Verify: `curl -fsS -H "Authorization: Bearer $(grep ^GITHUB_TOKEN= ~/.viralman/.env | cut -d= -f2-)" https://api.github.com/rate_limit | python3 -c 'import json,sys; print(json.load(sys.stdin)["resources"]["core"]["limit"])'` (expect 5000).
 
 **SMTP** — any provider. Gmail shortcut:
 
 ```bash
-./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_SECURITY=starttls
-./scripts/save_creds.py --set SMTP_USER=<gmail> --set SMTP_FROM=<gmail> --set SMTP_FROM_NAME='<name>'
+viralman save-creds --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_SECURITY=starttls
+viralman save-creds --set SMTP_USER=<gmail> --set SMTP_FROM=<gmail> --set SMTP_FROM_NAME='<name>'
 read -rs -p 'gmail app password: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin SMTP_PASSWORD; unset s; echo
+  viralman save-creds --stdin SMTP_PASSWORD; unset s; echo
 ```
 
 For SendGrid/Mailgun/SES: set `SMTP_HOST`, `SMTP_PORT=587`, `SMTP_USER=apikey`,
@@ -190,13 +190,13 @@ If found, no key needed. Otherwise save one of:
 ```bash
 # Claude
 read -rs -p 'ANTHROPIC_API_KEY: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin ANTHROPIC_API_KEY; unset s; echo
+  viralman save-creds --stdin ANTHROPIC_API_KEY; unset s; echo
 # OpenAI
 read -rs -p 'OPENAI_API_KEY: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin OPENAI_API_KEY; unset s; echo
+  viralman save-creds --stdin OPENAI_API_KEY; unset s; echo
 # Gemini
 read -rs -p 'GEMINI_API_KEY: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin GEMINI_API_KEY; unset s; echo
+  viralman save-creds --stdin GEMINI_API_KEY; unset s; echo
 ```
 
 **Public unsubscribe base (required for real sends, optional for dry-runs)** —
@@ -206,7 +206,7 @@ gitmail aborts with a clear error rather than emit a localhost link
 recipients can't click. Save once:
 
 ```bash
-./scripts/save_creds.py --set VIRALMAN_UNSUBSCRIBE_BASE=https://your-domain.example.com
+viralman save-creds --set VIRALMAN_UNSUBSCRIBE_BASE=https://your-domain.example.com
 ```
 
 The host needs the dashboard's `/u/<token>` route reachable on the open
@@ -214,7 +214,7 @@ internet. If the user doesn't have a public deployment yet, point them at
 options like a tunnel (`cloudflared tunnel`, `ngrok`) or skipping the
 real-send step until they do — dry-runs work without it.
 
-Verify end-to-end: `./scripts/gitmail.py analyse "A quick test project"`.
+Verify end-to-end: `viralman gitmail analyse "A quick test project"`.
 Done: "gitmail is hooked up — go to `http://localhost:8765/gitmail` and start
 a dry-run job."
 
@@ -241,10 +241,10 @@ One browser click; refresh tokens auto-renew. No 4-token paste.
 2. **Save the client values**:
 
    ```bash
-   ./scripts/save_creds.py --set TWITTER_HANDLE=<handle>
-   ./scripts/save_creds.py --set TWITTER_OAUTH2_CLIENT_ID=<id>
+   viralman save-creds --set TWITTER_HANDLE=<handle>
+   viralman save-creds --set TWITTER_OAUTH2_CLIENT_ID=<id>
    read -rs -p 'TWITTER_OAUTH2_CLIENT_SECRET: ' s && printf '%s' "$s" | \
-     ./scripts/save_creds.py --stdin TWITTER_OAUTH2_CLIENT_SECRET; unset s; echo
+     viralman save-creds --stdin TWITTER_OAUTH2_CLIENT_SECRET; unset s; echo
    ```
 
 3. **Run the OAuth flow** — start the dashboard locally, then open the start URL:
@@ -262,13 +262,13 @@ One browser click; refresh tokens auto-renew. No 4-token paste.
 4. **Verify**:
 
    ```bash
-   ./scripts/save_creds.py --show-keys | grep TWITTER_OAUTH2
+   viralman save-creds --show-keys | grep TWITTER_OAUTH2
    ```
 
    Expect 4 keys: `TWITTER_OAUTH2_CLIENT_ID`, `TWITTER_OAUTH2_CLIENT_SECRET`,
    `TWITTER_OAUTH2_BEARER`, `TWITTER_OAUTH2_REFRESH`.
 
-`post_twitter.py` prefers the OAuth 2.0 bearer; on a 401 it auto-refreshes
+`viralman post-twitter` prefers the OAuth 2.0 bearer; on a 401 it auto-refreshes
 using the refresh token and persists the rotated pair.
 
 ### Legacy — OAuth 1.0a 4-key (fallback)
@@ -280,12 +280,12 @@ App permissions **Read and write**, generate Keys and tokens. **Regenerate the
 Access Token *after* setting Read+Write** — pre-upgrade tokens are read-only.
 
 ```bash
-./scripts/save_creds.py --set TWITTER_HANDLE=<handle>
-# four secrets, each via read -s | save_creds.py --stdin:
+viralman save-creds --set TWITTER_HANDLE=<handle>
+# four secrets, each via read -s | viralman save-creds --stdin:
 #   TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET
 ```
 
-Verify: `./scripts/check_creds.py --platform twitter`
+Verify: `viralman check-creds --platform twitter`
 → `twitter OK — @<handle> (id=...)`.
 
 ### Common failures
@@ -309,24 +309,24 @@ and **CLIENT_SECRET** ("secret" field).
 Save non-secrets:
 
 ```bash
-./scripts/save_creds.py --set REDDIT_CLIENT_ID=<client_id>
-./scripts/save_creds.py --set REDDIT_USERNAME=<username>
-./scripts/save_creds.py --set REDDIT_USER_AGENT='viralman/0.1.0 by <username>'
+viralman save-creds --set REDDIT_CLIENT_ID=<client_id>
+viralman save-creds --set REDDIT_USERNAME=<username>
+viralman save-creds --set REDDIT_USER_AGENT='viralman/0.1.0 by <username>'
 ```
 
 Save secrets via `read -s`:
 
 ```bash
 read -rs -p 'reddit client_secret: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin REDDIT_CLIENT_SECRET; unset s; echo
+  viralman save-creds --stdin REDDIT_CLIENT_SECRET; unset s; echo
 read -rs -p 'reddit password: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin REDDIT_PASSWORD; unset s; echo
+  viralman save-creds --stdin REDDIT_PASSWORD; unset s; echo
 ```
 
 Note: Reddit 2FA breaks PRAW password auth. Use a dedicated account without
 2FA, or disable 2FA on this account.
 
-Verify: `./scripts/check_creds.py --platform reddit` → `reddit OK — u/<username>`.
+Verify: `viralman check-creds --platform reddit` → `reddit OK — u/<username>`.
 
 Common failures: `401`/`invalid_grant` = whitespace in secret (re-run `read -s`),
 wrong app type, or 2FA active.
@@ -346,13 +346,13 @@ creates an app tied to a company/org page (free personal page is fine). In the
 "Share on LinkedIn" (auto-approved). In the **Auth** tab, add redirect URL
 `http://localhost:8765/callback` and note Client ID + Client Secret.
 
-Save client_id: `./scripts/save_creds.py --set LINKEDIN_CLIENT_ID=<id>`
+Save client_id: `viralman save-creds --set LINKEDIN_CLIENT_ID=<id>`
 
 Save client_secret:
 
 ```bash
 read -rs -p 'LINKEDIN_CLIENT_SECRET: ' s && printf '%s' "$s" | \
-  ./scripts/save_creds.py --stdin LINKEDIN_CLIENT_SECRET; unset s; echo
+  viralman save-creds --stdin LINKEDIN_CLIENT_SECRET; unset s; echo
 ```
 
 **OAuth flow** — construct and print this URL (fill in the saved client_id):
@@ -384,7 +384,7 @@ resp = json.loads(urllib.request.urlopen(urllib.request.Request(
     "https://www.linkedin.com/oauth/v2/accessToken", data=data,
     headers={"Content-Type":"application/x-www-form-urlencoded"})).read())
 print("token_received_chars:", len(resp.get("access_token","")))
-subprocess.run(["./scripts/save_creds.py","--stdin","LINKEDIN_ACCESS_TOKEN"],
+subprocess.run(["viralman save-creds","--stdin","LINKEDIN_ACCESS_TOKEN"],
     input=resp["access_token"], text=True, check=True)
 PY
 unset code; echo
@@ -393,13 +393,13 @@ unset code; echo
 **Capture person URN**:
 
 ```bash
-./scripts/check_creds.py --platform linkedin
+viralman check-creds --platform linkedin
 # output: linkedin OK — <name> (sub=<id>)
 # hint: set LINKEDIN_PERSON_URN=urn:li:person:<id>
-./scripts/save_creds.py --set LINKEDIN_PERSON_URN=urn:li:person:<id>
+viralman save-creds --set LINKEDIN_PERSON_URN=urn:li:person:<id>
 ```
 
-Re-run `check_creds.py --platform linkedin` — hint should disappear.
+Re-run `viralman check-creds --platform linkedin` — hint should disappear.
 
 Common failures: redirect URI mismatch (`Bummer` error on auth page); `401
 invalid_token` = token expired, re-run OAuth steps; `403 ACCESS_DENIED` =
@@ -412,7 +412,7 @@ Done: "LinkedIn is hooked up. Token expires in 60 days — re-run
 
 ## Step 4 — final key-list confirmation
 
-After any channel completes, run `./scripts/save_creds.py --show-keys` and
+After any channel completes, run `viralman save-creds --show-keys` and
 confirm that the expected keys for that channel are present:
 
 | Channel  | Required keys                                                            |
@@ -429,24 +429,22 @@ relevant sub-step.
 
 ## Step 5 — Pre-approve viralman commands (optional but recommended)
 
-Claude Code's permission layer prompts the user (and the auto-mode classifier may flag-and-block) on each fresh `./scripts/gitmail.py` / `post_*.py` invocation, and viralman's most common gitmail flows trigger this on **every collect/send call**. The fix is a one-time edit to `~/.claude/settings.json` — but **the agent must NOT self-edit it**. Claude Code's harness blocks agent-driven permission self-grants. The agent must surface the snippet and stop.
+Claude Code's permission layer prompts the user (and the auto-mode classifier may flag-and-block) on each fresh `viralman <subcommand>` invocation, and viralman's most common gitmail flows trigger this on **every collect/send call**. The fix is a one-time edit to `~/.claude/settings.json` — but **the agent must NOT self-edit it**. Claude Code's harness blocks agent-driven permission self-grants. The agent must surface the snippet and stop.
 
 After Step 4 completes, present this block verbatim to the user (Korean default; mirror the user's language if they've been speaking another):
 
 ```
 권한 프롬프트를 매번 통과하지 않으시려면 ~/.claude/settings.json 의
-permissions.allow 배열에 아래를 추가해 주세요 (한 번만 paste, 새 세션부터 적용):
+permissions.allow 배열에 아래 한 줄을 추가해 주세요 (한 번만 paste, 새
+세션부터 적용):
 
-  "Bash(./scripts/gitmail.py:*)",
-  "Bash(./scripts/twitter_reply.py:*)",
-  "Bash(./scripts/post_twitter.py:*)",
-  "Bash(./scripts/post_reddit.py:*)",
-  "Bash(./scripts/post_linkedin.py:*)",
-  "Bash(./scripts/check_creds.py:*)",
-  "Bash(./scripts/save_creds.py:*)"
+  "Bash(viralman:*)"
+
+이 한 줄로 viralman 의 모든 subcommand (gitmail, twitter-reply,
+save-creds, post-*, check-creds, ...) 가 커버됩니다.
 
 ⚠ auto-mode classifier 는 별개 레이어라, 대량 발송 류 명령
-(예: ./scripts/gitmail.py recipients --max-users 500) 은 위 룰을
+(예: viralman gitmail recipients --max-users 500) 은 위 룰을
 추가하셔도 한 번 권한 다이얼로그가 뜰 수 있습니다. 그땐 한 번만 Allow
 누르시면 됩니다.
 

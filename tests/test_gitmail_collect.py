@@ -16,7 +16,15 @@ from unittest.mock import MagicMock, patch
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+sys.path.insert(0, str(ROOT))                       # so the dashboard package is reachable
+sys.path.insert(0, str(ROOT / "scripts" / "lib"))   # for libs that gitmail imports
+
+# Force-load the modules whose attributes we patch by string path. Each `with
+# patch("dashboard.api.X")` resolves `dashboard.api` via getattr, so the package
+# must be in sys.modules. Importing dashboard.api also appends scripts/ to
+# sys.path, which lets the next line import gitmail.
+import dashboard.api  # noqa: E402,F401
+import gitmail  # noqa: E402,F401
 
 # ---------------------------------------------------------------------------
 # Helpers to import the module under test with creds patched out
@@ -42,14 +50,25 @@ def _recipients_from_done(job) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Patch targets (names as imported in dashboard.api)
+# Patch targets — after the pipeline-unification refactor (ADR 0001), the
+# dashboard delegates to gitmail.step_*, so we patch the underlying lib calls
+# rather than the dashboard's old inline implementation.
 # ---------------------------------------------------------------------------
 
-_ANALYSE    = "dashboard.api.github_search.analyse_project"
-_SEARCH     = "dashboard.api.github_search.search_similar_repos"
-_STARGAZERS = "dashboard.api.github_search.iter_stargazers"
-_EMAIL      = "dashboard.api.github_search.resolve_user_email"
-_LOAD_CREDS = "dashboard.api.load_creds"
+_LLM_ANALYSE  = "llm_compose.analyse_project_llm"
+_ANALYSE      = "dashboard.api.github_search.analyse_project"
+_SEARCH       = "dashboard.api.github_search.search_similar_repos"
+_STARGAZERS   = "dashboard.api.github_search.iter_stargazers"
+_BULK_PROFILE = "dashboard.api.github_search.bulk_resolve_profile_data"
+_EMAIL        = "dashboard.api.github_search.resolve_user_email"
+_LOAD_CREDS   = "dashboard.api.load_creds"
+
+
+def _profile_dict(emails: dict) -> dict:
+    """Shape a {login: email-or-empty} dict into the GraphQL bulk return shape:
+    {login: {"email": <email-or-None>, "name": None}}. Empty string → None."""
+    return {login: {"email": (e or None), "name": None}
+            for login, e in emails.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -62,13 +81,15 @@ class TestCollectEmitsLifecycleEvents(unittest.TestCase):
         emails = {"alice": "alice@x.com", "bob": "bob@x.com"}
 
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["k8s"], "topics": ["kubernetes"]}), \
              patch(_SEARCH, return_value=[{"full_name": "foo/bar", "stars": 500}]), \
              patch(_STARGAZERS, return_value=iter([
                  {"login": "alice", "html_url": "https://github.com/alice"},
                  {"login": "bob",   "html_url": "https://github.com/bob"},
              ])), \
-             patch(_EMAIL, side_effect=lambda login, token=None: emails.get(login, "")):
+             patch(_BULK_PROFILE, return_value=_profile_dict(emails)), \
+             patch(_EMAIL, side_effect=lambda login, **kwargs: emails.get(login, "")):
             import dashboard.api as api
             job = _make_job(description="K8s autoscaler in Go", max_users=10)
             api._run_collect_job(job)
@@ -115,13 +136,15 @@ class TestCollectDedupByLogin(unittest.TestCase):
             ])
 
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["k8s"], "topics": ["kubernetes"]}), \
              patch(_SEARCH, return_value=[
                  {"full_name": "a/x", "stars": 100},
                  {"full_name": "a/y", "stars": 100},
              ]), \
              patch(_STARGAZERS, side_effect=fake_stargazers), \
-             patch(_EMAIL, side_effect=lambda login, token=None: emails.get(login, "")):
+             patch(_BULK_PROFILE, return_value=_profile_dict(emails)), \
+             patch(_EMAIL, side_effect=lambda login, **kwargs: emails.get(login, "")):
             import dashboard.api as api
             job = _make_job(max_users=10)
             api._run_collect_job(job)
@@ -147,6 +170,7 @@ class TestCollectSkipsUsersWithoutEmail(unittest.TestCase):
         emails = {"alice": "alice@x.com", "bob": "", "carol": "carol@x.com"}
 
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["cli"], "topics": ["cli"]}), \
              patch(_SEARCH, return_value=[{"full_name": "x/y", "stars": 300}]), \
              patch(_STARGAZERS, return_value=iter([
@@ -154,7 +178,8 @@ class TestCollectSkipsUsersWithoutEmail(unittest.TestCase):
                  {"login": "bob",   "html_url": "https://github.com/bob"},
                  {"login": "carol", "html_url": "https://github.com/carol"},
              ])), \
-             patch(_EMAIL, side_effect=lambda login, token=None: emails.get(login, "")):
+             patch(_BULK_PROFILE, return_value=_profile_dict(emails)), \
+             patch(_EMAIL, side_effect=lambda login, **kwargs: emails.get(login, "")):
             import dashboard.api as api
             job = _make_job(max_users=10)
             api._run_collect_job(job)
@@ -187,6 +212,7 @@ class TestCollectExcludesOwnRepo(unittest.TestCase):
             return []  # no repos → fatal, but we only care about the kwarg
 
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["cli"], "topics": ["cli"]}), \
              patch(_SEARCH, side_effect=fake_search):
             import dashboard.api as api
@@ -225,10 +251,12 @@ class TestCollectRespectsCancellation(unittest.TestCase):
         emails = {f"user{i}": f"user{i}@x.com" for i in range(100)}
 
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["k8s"], "topics": ["kubernetes"]}), \
              patch(_SEARCH, return_value=[{"full_name": "big/repo", "stars": 9999}]), \
              patch(_STARGAZERS, side_effect=fake_stargazers), \
-             patch(_EMAIL, side_effect=lambda login, token=None: emails.get(login, "")):
+             patch(_BULK_PROFILE, return_value={}), \
+             patch(_EMAIL, side_effect=lambda login, **kwargs: emails.get(login, "")):
             api._run_collect_job(job)
 
         recipients = _recipients_from_done(job)
@@ -244,6 +272,7 @@ class TestCollectFatalWhenNoKeywords(unittest.TestCase):
 
     def test_collect_fatal_when_no_keywords(self):
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": [], "topics": []}):
             import dashboard.api as api
             job = _make_job()
@@ -271,6 +300,7 @@ class TestCollectFatalWhenNoRepos(unittest.TestCase):
 
     def test_collect_fatal_when_no_repos(self):
         with patch(_LOAD_CREDS, return_value={}), \
+             patch(_LLM_ANALYSE, side_effect=RuntimeError("no LLM in test")), \
              patch(_ANALYSE, return_value={"keywords": ["cli"], "topics": ["cli"]}), \
              patch(_SEARCH, return_value=[]):
             import dashboard.api as api

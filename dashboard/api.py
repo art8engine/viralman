@@ -35,15 +35,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "scripts"
 
 sys.path.insert(0, str(SCRIPTS / "lib"))
+# Append (not insert) so scripts/dashboard.py does NOT shadow the dashboard
+# package — `from gitmail import step_*` only needs scripts/ to be reachable.
+sys.path.append(str(SCRIPTS))
 
 from creds import load as load_creds, CredsError  # noqa: E402
 from compose_urls import twitter_intent, reddit_submit  # noqa: E402
 from sniffer_check import check as sniff_check  # noqa: E402
-import github_search  # noqa: E402
-import smtp_send  # noqa: E402
+# These two are re-exported for tests that monkey-patch via `api.<name>`
+# (test_unsubscribe_filter.py mocks `api.smtp_send.render_preview`, and
+# test_gitmail_collect.py patches `dashboard.api.github_search.*`). The
+# pipeline itself now goes through gitmail.step_*, not these directly.
+import github_search  # noqa: E402,F401
+import smtp_send  # noqa: E402,F401
 from unsubscribe import (  # noqa: E402
     record_unsubscribe as _record_unsubscribe_lib,
-    record_token_email,
     load_unsubscribed_emails,
     token_email_map_path,
 )
@@ -360,192 +366,115 @@ def _fetch_reddit_threads(subs, keywords, per_sub=5):
 # ─── In-process gitmail collect / send (no subprocess) ───
 
 def _run_collect_job(job: "GitmailJob") -> None:
+    """Drive the collect phase of the Outreach Pipeline by calling step_* with
+    a job-bound sink and cancel check. Behaviour matches the CLI's
+    `gitmail recipients` exactly — same GraphQL bulk profile lookup and the
+    same Gmail/abort guards apply (see ADR 0001)."""
+
+    def job_sink(event: str, **fields: Any) -> None:
+        job.append({"event": event, **fields})
+
+    def cancelled() -> bool:
+        return job.status == "cancelled"
+
     try:
         try:
             creds = load_creds()
         except CredsError:
             creds = {}
-        token = creds.get("GITHUB_TOKEN")
-        desc = job.args.get("description", "")
-        job.append({"event": "analyse_start"})
-        analysis = github_search.analyse_project(desc)
-        job.append({"event": "analyse_done",
-                     "keywords": analysis.get("keywords", []),
-                     "topics": analysis.get("topics", [])})
+
+        from gitmail import (step_analyse, step_search, step_recipients,
+                              _own_repo_full_name)
+
+        analysis = step_analyse(creds, job.args.get("description", ""),
+                                 sink=job_sink)
         if not analysis.get("topics") and not analysis.get("keywords"):
-            job.append({"event": "fatal",
-                         "reason": "no usable keywords found in description"})
+            job_sink("fatal", reason="no usable keywords found in description")
             return
-        job.append({"event": "search_start"})
-        own_repo = None
-        url = job.args.get("project_url") or ""
-        if "github.com/" in url:
-            tail = url.split("github.com/", 1)[1].rstrip("/").split("/")
-            if len(tail) >= 2:
-                own_repo = f"{tail[0]}/{tail[1]}"
-        repos = github_search.search_similar_repos(
-            topics=analysis.get("topics", []),
-            keywords=analysis.get("keywords", []),
+        if cancelled():
+            return
+
+        repos = step_search(
+            creds, analysis,
             min_stars=int(job.args.get("min_stars") or 200),
-            limit=int(job.args.get("repo_limit") or 15),
-            token=token,
-            exclude_full_names={own_repo} if own_repo else None,
+            repo_limit=int(job.args.get("repo_limit") or 15),
+            own_repo=_own_repo_full_name(job.args.get("project_url") or ""),
+            sink=job_sink,
         )
-        job.append({"event": "search_done", "count": len(repos),
-                     "repos": [{"full_name": r["full_name"], "stars": r["stars"]}
-                                for r in repos]})
         if not repos:
-            job.append({"event": "fatal", "reason": "no similar repos found"})
+            job_sink("fatal", reason="no similar repos found")
             return
-        max_users = min(int(job.args.get("max_users") or 100), 10000)
-        job.append({"event": "recipients_start", "target": max_users,
-                     "repo_count": len(repos)})
-        seen: set[str] = set()
-        recipients: List[Dict[str, Any]] = []
-        iters = [(r, github_search.iter_stargazers(r["full_name"],
-                                                     max_users=max_users * 5,
-                                                     token=token))
-                  for r in repos]
-        while iters and len(recipients) < max_users and job.status != "cancelled":
-            next_iters = []
-            for repo, it in iters:
-                try:
-                    user = next(it)
-                except StopIteration:
-                    continue
-                login = user.get("login")
-                if not login or login in seen:
-                    next_iters.append((repo, it))
-                    continue
-                seen.add(login)
-                if job.status == "cancelled":
-                    break
-                email = github_search.resolve_user_email(login, token=token)
-                if email:
-                    rec = {
-                        "login": login,
-                        "email": email,
-                        "starred_repo": repo["full_name"],
-                        "profile": user.get("html_url", f"https://github.com/{login}"),
-                    }
-                    recipients.append(rec)
-                    job.append({"event": "recipient",
-                                 "count": len(recipients),
-                                 "target": max_users,
-                                 **rec})
-                    if len(recipients) >= max_users:
-                        break
-                next_iters.append((repo, it))
-            iters = next_iters
-        job.append({"event": "recipients_done", "count": len(recipients)})
-        job.append({"event": "done", "recipients": recipients,
-                     "analysis": analysis})
+
+        max_users = min(int(job.args.get("max_users") or 100), 1500)
+        recipients = step_recipients(
+            creds, repos, max_users=max_users,
+            sink=job_sink, cancel_check=cancelled,
+        )
+        job_sink("done", recipients=recipients, analysis=analysis)
     except Exception as e:
         job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
 
 
 def _run_send_job(job: "GitmailJob") -> None:
+    """Drive compose+send for a recipient list the user already collected.
+
+    Both compose and send are step_* calls — same Gmail quota guard, same
+    abort marker handling, same unsubscribe-token recording as the CLI.
+    The dashboard form's body/subject are treated as Prewritten Templates
+    (see CONTEXT.md): step_compose's prewritten path substitutes
+    {{login}}/{{starred_repo}}/{{project_name}}/{{project_url}}.
+    """
+
+    def job_sink(event: str, **fields: Any) -> None:
+        job.append({"event": event, **fields})
+
+    def cancelled() -> bool:
+        return job.status == "cancelled"
+
     try:
         creds = load_creds()
         recipients = job.args.get("recipients") or []
+        project_name = job.args.get("project_name", "")
+        project_url = job.args.get("project_url", "")
         body_template = job.args.get("body") or ""
-        subject = job.args.get("subject") or f"about {job.args.get('project_name', 'your project')}"
+        subject_template = (job.args.get("subject")
+                             or f"about {project_name or 'your project'}")
         dry_run = bool(job.args.get("dry_run", True))
         unsubscribe_base = job.args.get("_url_root") or "http://localhost:8765"
 
-        unsubbed = _load_unsubscribed_emails()
+        # Normalise recipient shape — step_compose expects a starred_repo on
+        # every row, so backfill empty strings rather than KeyError downstream.
+        clean_recipients: List[Dict[str, str]] = []
+        for r in recipients:
+            if not isinstance(r, dict) or not r.get("email"):
+                continue
+            clean_recipients.append({
+                "login": r.get("login", "") or "",
+                "email": r["email"],
+                "starred_repo": r.get("starred_repo", "") or "",
+                "profile": r.get("profile", "") or "",
+            })
 
-        def fill(rec: Dict[str, str]) -> str:
-            return (body_template
-                    .replace("{{login}}", rec.get("login", ""))
-                    .replace("{{starred_repo}}", rec.get("starred_repo", "")))
+        from gitmail import step_compose, step_send
 
-        if dry_run:
-            job.append({"event": "send_dry_run_start", "count": len(recipients)})
-            previews = []
-            skipped = 0
-            for r in recipients:
-                if job.status == "cancelled":
-                    break
-                email = (r.get("email") or "").lower()
-                if email and email in unsubbed:
-                    skipped += 1
-                    job.append({"event": "send_skip",
-                                 "reason": "unsubscribed",
-                                 "to": r.get("email", "")})
-                    continue
-                body = fill(r)
-                preview = smtp_send.render_preview(
-                    creds, to_addr=r["email"], subject=subject, body=body,
-                    unsubscribe_base=unsubscribe_base,
-                )
-                tok = preview.get("unsubscribe_token")
-                if tok:
-                    record_token_email(tok, r["email"])
-                previews.append({**r, "subject": subject, "body": body,
-                                  "preview_headers": preview["headers"]})
-                job.append({"event": "send_preview", "to": r["email"],
-                             "subject": subject})
-            job.append({"event": "send_dry_run_done", "count": len(previews),
-                         "skipped": skipped})
-            job.append({"event": "done",
-                         "send": {"sent": 0, "failed": 0, "skipped": skipped,
-                                   "previews": previews}})
-            return
+        composed = step_compose(
+            creds, clean_recipients,
+            project_name=project_name,
+            project_pitch="",
+            project_url=project_url,
+            provider=None,
+            prewritten_subject=subject_template,
+            prewritten_body=body_template,
+            sink=job_sink, cancel_check=cancelled,
+        )
 
-        try:
-            smtp, limiter = smtp_send.open_session(creds)
-        except smtp_send.SmtpError as e:
-            job.append({"event": "fatal", "reason": str(e)})
-            return
-
-        sent = 0
-        failed = 0
-        skipped = 0
-        failures: List[Dict[str, str]] = []
-        job.append({"event": "send_start", "count": len(recipients)})
-        try:
-            for r in recipients:
-                if job.status == "cancelled":
-                    break
-                email = (r.get("email") or "").lower()
-                if email and email in unsubbed:
-                    skipped += 1
-                    job.append({"event": "send_skip",
-                                 "reason": "unsubscribed",
-                                 "to": r.get("email", "")})
-                    continue
-                limiter.wait()
-                body = fill(r)
-                try:
-                    result = smtp_send.send_one(
-                        smtp, creds, to_addr=r["email"], subject=subject,
-                        body=body, unsubscribe_base=unsubscribe_base,
-                    )
-                    sent += 1
-                    tok = result.get("unsubscribe_token")
-                    if tok:
-                        record_token_email(tok, r["email"])
-                    job.append({"event": "send_ok", "to": r["email"],
-                                 "login": r.get("login", ""),
-                                 "message_id": result.get("message_id", ""),
-                                 "sent": sent, "target": len(recipients)})
-                except Exception as e:
-                    failed += 1
-                    failures.append({"login": r.get("login", ""),
-                                      "email": r["email"], "error": str(e)})
-                    job.append({"event": "send_fail", "to": r["email"],
-                                 "error": str(e), "failed": failed})
-        finally:
-            try:
-                smtp.quit()
-            except Exception:
-                pass
-        job.append({"event": "send_done", "sent": sent, "failed": failed,
-                     "skipped": skipped})
-        job.append({"event": "done",
-                     "send": {"sent": sent, "failed": failed,
-                               "skipped": skipped, "failures": failures}})
+        result = step_send(
+            creds, composed,
+            unsubscribe_base=unsubscribe_base,
+            dry_run=dry_run,
+            sink=job_sink, cancel_check=cancelled,
+        )
+        job_sink("done", send=result)
     except Exception as e:
         job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
 

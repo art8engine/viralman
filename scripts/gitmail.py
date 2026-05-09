@@ -41,7 +41,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
@@ -56,7 +56,13 @@ from unsubscribe import (  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
-# Streaming event helper                                                      #
+# Streaming event helper + sink                                               #
+#                                                                             #
+# - `_emit` writes top-level CLI events (fatal / done / etc.) to stdout.      #
+# - `EventSink` is the type each step_* takes via a `sink` kwarg.             #
+# - `_stdout_sink` is the default sink: same as `_emit`, but filters the      #
+#   per-recipient `recipient` event so the CLI stream stays readable.         #
+# - The dashboard supplies its own sink that appends to a GitmailJob.         #
 # --------------------------------------------------------------------------- #
 
 
@@ -64,6 +70,17 @@ def _emit(event: str, **fields: Any) -> None:
     record = {"ts": time.time(), "event": event, **fields}
     sys.stdout.write(json.dumps(record, ensure_ascii=False) + "\n")
     sys.stdout.flush()
+
+
+EventSink = Callable[..., None]
+
+
+def _stdout_sink(event: str, **fields: Any) -> None:
+    if event == "recipient":
+        # Per-recipient rows are too noisy on CLI; recipients_progress shows
+        # the running count, and gitmail_watch.py renders a one-line status.
+        return
+    _emit(event, **fields)
 
 
 # --------------------------------------------------------------------------- #
@@ -92,22 +109,23 @@ def _split_csv(value: Optional[str]) -> List[str]:
 
 
 def step_analyse(creds: Dict[str, str], description: str,
-                  *, provider: Optional[str] = None) -> Dict[str, Any]:
-    _emit("analyse_start")
+                  *, provider: Optional[str] = None,
+                  sink: EventSink = _stdout_sink) -> Dict[str, Any]:
+    sink("analyse_start")
     try:
         analysis = llm_compose.analyse_project_llm(creds, description, provider=provider)
         analysis["source"] = "llm"
     except Exception as e:
-        _emit("analyse_fallback", reason=str(e))
+        sink("analyse_fallback", reason=str(e))
         analysis = github_search.analyse_project(description)
         analysis["source"] = "heuristic"
         analysis.setdefault("summary", description[:200])
         analysis.setdefault("value_prop", "")
-    _emit("analyse_done",
-          summary=analysis.get("summary", ""),
-          keywords=analysis.get("keywords", []),
-          topics=analysis.get("topics", []),
-          source=analysis.get("source"))
+    sink("analyse_done",
+         summary=analysis.get("summary", ""),
+         keywords=analysis.get("keywords", []),
+         topics=analysis.get("topics", []),
+         source=analysis.get("source"))
     return analysis
 
 
@@ -118,10 +136,11 @@ def step_search(
     min_stars: int,
     repo_limit: int,
     own_repo: Optional[str],
+    sink: EventSink = _stdout_sink,
 ) -> List[Dict[str, Any]]:
     token = creds.get("GITHUB_TOKEN")
-    _emit("search_start", topics=analysis.get("topics", []),
-          keywords=analysis.get("keywords", []), min_stars=min_stars)
+    sink("search_start", topics=analysis.get("topics", []),
+         keywords=analysis.get("keywords", []), min_stars=min_stars)
     repos = github_search.search_similar_repos(
         topics=analysis.get("topics", []) or [],
         keywords=analysis.get("keywords", []) or [],
@@ -130,9 +149,9 @@ def step_search(
         token=token,
         exclude_full_names={own_repo} if own_repo else None,
     )
-    _emit("search_done", count=len(repos),
-          repos=[{"full_name": r["full_name"], "stars": r["stars"]}
-                 for r in repos])
+    sink("search_done", count=len(repos),
+         repos=[{"full_name": r["full_name"], "stars": r["stars"]}
+                for r in repos])
     return repos
 
 
@@ -141,9 +160,11 @@ def step_recipients(
     repos: List[Dict[str, Any]],
     *,
     max_users: int,
+    sink: EventSink = _stdout_sink,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> List[Dict[str, str]]:
     token = creds.get("GITHUB_TOKEN")
-    _emit("recipients_start", target=max_users, repo_count=len(repos))
+    sink("recipients_start", target=max_users, repo_count=len(repos))
 
     last_log = [0.0]
 
@@ -152,7 +173,7 @@ def step_recipients(
         now = time.monotonic()
         if now - last_log[0] >= 1.0 or p["count"] >= p["target"]:
             last_log[0] = now
-            _emit("recipients_progress", count=p["count"], target=p["target"])
+            sink("recipients_progress", count=p["count"], target=p["target"])
 
     # Phase 1 — enumerate candidate stargazers across all repos (REST stargazers
     # endpoint, ~100 stargazers per request).
@@ -168,6 +189,9 @@ def step_recipients(
                                                 token=token))
               for r in repos]
     while iters and len(candidates) < target_candidates:
+        if cancel_check and cancel_check():
+            sink("cancelled", phase="candidates", count=len(candidates))
+            return []
         next_iters = []
         for repo, it in iters:
             try:
@@ -182,7 +206,7 @@ def step_recipients(
             next_iters.append((repo, it))
         iters = next_iters
 
-    _emit("candidates_collected", count=len(candidates))
+    sink("candidates_collected", count=len(candidates))
 
     cand_meta: Dict[str, tuple[str, str]] = {
         login: (html, repo_name) for login, html, repo_name in candidates
@@ -194,23 +218,28 @@ def step_recipients(
         list(cand_meta.keys()), token=token, batch_size=100,
     )
     profile_hits = sum(1 for d in profiles.values() if d.get("email"))
-    _emit("graphql_profiles_done",
-          looked_up=len(profiles), email_found=profile_hits)
+    sink("graphql_profiles_done",
+         looked_up=len(profiles), email_found=profile_hits)
 
     out: List[Dict[str, str]] = []
     for login, data in profiles.items():
         if len(out) >= max_users:
             break
+        if cancel_check and cancel_check():
+            sink("cancelled", phase="graphql", count=len(out))
+            return out[:max_users]
         email = data.get("email")
         if not email:
             continue
         html, repo_name = cand_meta[login]
-        out.append({
+        rec = {
             "login": login,
             "email": email,
             "starred_repo": repo_name,
             "profile": html,
-        })
+        }
+        out.append(rec)
+        sink("recipient", count=len(out), target=max_users, **rec)
         _on_progress({"count": len(out), "target": max_users, "login": login})
 
     # Phase 2b — REST PushEvent mining for the remaining candidates. We pass
@@ -236,16 +265,21 @@ def step_recipients(
         try:
             futures = [pool.submit(_events, login) for login in fallback_logins]
             for fut in as_completed(futures):
+                if cancel_check and cancel_check():
+                    sink("cancelled", phase="pushevent", count=len(out))
+                    break
                 login, email = fut.result()
                 if not email:
                     continue
                 html, repo_name = cand_meta[login]
-                out.append({
+                rec = {
                     "login": login,
                     "email": email,
                     "starred_repo": repo_name,
                     "profile": html,
-                })
+                }
+                out.append(rec)
+                sink("recipient", count=len(out), target=max_users, **rec)
                 _on_progress({"count": len(out), "target": max_users,
                               "login": login})
                 if len(out) >= max_users:
@@ -253,13 +287,21 @@ def step_recipients(
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
 
-    _emit("recipients_done", count=len(out))
+    sink("recipients_done", count=len(out))
     return out[:max_users]
 
 
-class _SafeFormatDict(dict):
-    def __missing__(self, key: str) -> str:
-        return "{" + key + "}"
+def _fill_template(template: str, *, login: str, starred_repo: str,
+                    project_name: str, project_url: str) -> str:
+    """Substitute Mustache-style double-curly placeholders in a Prewritten
+    Template. See CONTEXT.md → Prewritten Template. We use .replace() rather
+    than Python format so the body can contain literal '{' / '}' characters
+    (e.g. JSON snippets, code) without escaping."""
+    return (template
+            .replace("{{login}}", login)
+            .replace("{{starred_repo}}", starred_repo)
+            .replace("{{project_name}}", project_name)
+            .replace("{{project_url}}", project_url))
 
 
 def step_compose(
@@ -276,35 +318,46 @@ def step_compose(
     subject_style: Optional[str] = None,
     prewritten_subject: Optional[str] = None,
     prewritten_body: Optional[str] = None,
+    sink: EventSink = _stdout_sink,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> List[Dict[str, str]]:
     """Returns each recipient enriched with subject+body.
 
     If both prewritten_subject and prewritten_body are provided, skip the LLM
-    entirely and per-recipient placeholder-substitute {login}, {starred_repo},
-    {project_name}, {project_url}. This is the path for users who don't want
-    to set an Anthropic/OpenAI API key.
+    entirely and per-recipient placeholder-substitute {{login}},
+    {{starred_repo}}, {{project_name}}, {{project_url}}. This is the path for
+    users who don't want to set an Anthropic/OpenAI API key, and for the
+    dashboard's send job (where the user has already authored the body).
     """
     if prewritten_subject is not None and prewritten_body is not None:
-        _emit("compose_start", count=len(recipients), template_only=True,
-              prewritten=True)
+        sink("compose_start", count=len(recipients), template_only=True,
+             prewritten=True)
         out: List[Dict[str, str]] = []
         for i, r in enumerate(recipients):
-            ctx = _SafeFormatDict(
-                login=r["login"],
-                starred_repo=r["starred_repo"],
-                project_name=project_name,
-                project_url=project_url,
-            )
-            subj = prewritten_subject.format_map(ctx)
-            body = prewritten_body.format_map(ctx)
+            if cancel_check and cancel_check():
+                sink("cancelled", phase="compose", count=len(out))
+                return out
+            subj = _fill_template(prewritten_subject,
+                                   login=r["login"],
+                                   starred_repo=r["starred_repo"],
+                                   project_name=project_name,
+                                   project_url=project_url)
+            body = _fill_template(prewritten_body,
+                                   login=r["login"],
+                                   starred_repo=r["starred_repo"],
+                                   project_name=project_name,
+                                   project_url=project_url)
             out.append({**r, "subject": subj, "body": body})
-            _emit("compose_progress", count=i + 1, target=len(recipients))
-        _emit("compose_done", count=len(out))
+            sink("compose_progress", count=i + 1, target=len(recipients))
+        sink("compose_done", count=len(out))
         return out
 
-    _emit("compose_start", count=len(recipients), template_only=template_only)
+    sink("compose_start", count=len(recipients), template_only=template_only)
     out = []
     for i, r in enumerate(recipients):
+        if cancel_check and cancel_check():
+            sink("cancelled", phase="compose", count=len(out))
+            return out
         if template_only and i > 0:
             # Reuse the first composition; only swap @login and starred_repo
             base = out[0]
@@ -327,7 +380,7 @@ def step_compose(
                 subject_style=subject_style,
             )
         except Exception as e:
-            _emit("compose_error", login=r["login"], error=str(e))
+            sink("compose_error", login=r["login"], error=str(e))
             email = {
                 "subject": f"Quick note about {project_name}",
                 "body": (f"Hi @{r['login']},\n\n"
@@ -339,8 +392,8 @@ def step_compose(
             }
         rec = {**r, "subject": email["subject"], "body": email["body"]}
         out.append(rec)
-        _emit("compose_progress", count=i + 1, target=len(recipients))
-    _emit("compose_done", count=len(out))
+        sink("compose_progress", count=i + 1, target=len(recipients))
+    sink("compose_done", count=len(out))
     return out
 
 
@@ -351,20 +404,25 @@ def step_send(
     unsubscribe_base: str,
     dry_run: bool,
     reply_to: Optional[str] = None,
+    sink: EventSink = _stdout_sink,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> Dict[str, Any]:
     unsubbed = load_unsubscribed_emails()
     skipped = 0
     skips: List[Dict[str, str]] = []
 
     if dry_run:
-        _emit("send_dry_run_start", count=len(composed))
+        sink("send_dry_run_start", count=len(composed))
         previews = []
         for r in composed:
+            if cancel_check and cancel_check():
+                sink("cancelled", phase="send_dry_run", count=len(previews))
+                break
             email = (r.get("email") or "").lower()
             if email and email in unsubbed:
                 skipped += 1
                 skips.append({"email": r["email"], "login": r.get("login", "")})
-                _emit("send_skip", reason="unsubscribed", to=r["email"])
+                sink("send_skip", reason="unsubscribed", to=r["email"])
                 continue
             preview = smtp_send.render_preview(
                 creds,
@@ -378,8 +436,8 @@ def step_send(
             if tok:
                 record_token_email(tok, r["email"])
             previews.append({**r, "preview_headers": preview["headers"]})
-            _emit("send_preview", to=r["email"], subject=r["subject"])
-        _emit("send_dry_run_done", count=len(previews), skipped=skipped)
+            sink("send_preview", to=r["email"], subject=r["subject"])
+        sink("send_dry_run_done", count=len(previews), skipped=skipped)
         return {"sent": 0, "failed": 0, "skipped": skipped,
                 "previews": previews, "previews_count": len(previews),
                 "skips": skips}
@@ -404,7 +462,7 @@ def step_send(
     try:
         smtp, limiter = smtp_send.open_session(creds)
     except smtp_send.SmtpError as e:
-        _emit("send_error", reason=str(e))
+        sink("send_error", reason=str(e))
         raise
 
     sent = 0
@@ -420,14 +478,19 @@ def step_send(
         "Daily user sending limit",          # Gmail global daily quota (5.4.5)
         "5.4.5",                              # Gmail rate-limit code (defensive)
     )
-    _emit("send_start", count=len(composed))
+    sink("send_start", count=len(composed))
     try:
         for i, r in enumerate(composed):
+            if cancel_check and cancel_check():
+                sink("cancelled", phase="send",
+                     processed=sent + failed + skipped,
+                     unprocessed=len(composed) - i)
+                break
             email = (r.get("email") or "").lower()
             if email and email in unsubbed:
                 skipped += 1
                 skips.append({"email": r["email"], "login": r.get("login", "")})
-                _emit("send_skip", reason="unsubscribed", to=r["email"])
+                sink("send_skip", reason="unsubscribed", to=r["email"])
                 continue
             limiter.wait()
             try:
@@ -443,16 +506,16 @@ def step_send(
                 tok = result.get("unsubscribe_token")
                 if tok:
                     record_token_email(tok, r["email"])
-                _emit("send_ok", to=r["email"], login=r["login"],
-                      message_id=result["message_id"], sent=sent,
-                      target=len(composed))
+                sink("send_ok", to=r["email"], login=r["login"],
+                     message_id=result["message_id"], sent=sent,
+                     target=len(composed))
             except Exception as e:
                 msg = str(e)
                 failed += 1
                 failures.append({"login": r["login"], "email": r["email"],
                                   "error": msg})
-                _emit("send_fail", to=r["email"], login=r["login"],
-                      error=msg, failed=failed)
+                sink("send_fail", to=r["email"], login=r["login"],
+                     error=msg, failed=failed)
                 if any(m in msg for m in abort_markers):
                     unprocessed = len(composed) - i - 1
                     is_gmail_daily = ("Daily user sending limit" in msg
@@ -464,25 +527,25 @@ def step_send(
                         f"rolling window reset 후 retry-recipients 로 재발송하세요.",
                         file=sys.stderr,
                     )
-                    _emit("send_aborted",
-                          reason="smtp_daily_limit" if is_gmail_daily
-                                  else "smtp_disconnected",
-                          processed=sent + failed,
-                          total=len(composed),
-                          unprocessed=unprocessed,
-                          first_blocking_error=msg[:200],
-                          gmail_policy_note=(
-                              "Gmail free (@gmail.com): 500 msg/24h; "
-                              "Workspace: 2,000 msg/24h"),
-                          )
+                    sink("send_aborted",
+                         reason="smtp_daily_limit" if is_gmail_daily
+                                 else "smtp_disconnected",
+                         processed=sent + failed,
+                         total=len(composed),
+                         unprocessed=unprocessed,
+                         first_blocking_error=msg[:200],
+                         gmail_policy_note=(
+                             "Gmail free (@gmail.com): 500 msg/24h; "
+                             "Workspace: 2,000 msg/24h"),
+                         )
                     break
     finally:
         try:
             smtp.quit()
         except Exception:
             pass
-    _emit("send_done", sent=sent, failed=failed, skipped=skipped,
-          unprocessed=unprocessed)
+    sink("send_done", sent=sent, failed=failed, skipped=skipped,
+         unprocessed=unprocessed)
     return {"sent": sent, "failed": failed, "skipped": skipped,
             "unprocessed": unprocessed,
             "failures": failures, "skips": skips}
@@ -498,18 +561,23 @@ def _collect_from_seed_repos(
     seed_repos: List[str],
     *,
     max_users: int,
+    sink: EventSink = _stdout_sink,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> List[Dict[str, str]]:
     """Skip search; treat the given repos as the seed list directly."""
     repos = [{"full_name": fn, "stars": 0} for fn in seed_repos]
-    _emit("search_done", count=len(repos),
-          repos=[{"full_name": r["full_name"], "stars": 0} for r in repos],
-          source="seed_repos")
-    return step_recipients(creds, repos, max_users=max_users)
+    sink("search_done", count=len(repos),
+         repos=[{"full_name": r["full_name"], "stars": 0} for r in repos],
+         source="seed_repos")
+    return step_recipients(creds, repos, max_users=max_users,
+                            sink=sink, cancel_check=cancel_check)
 
 
 def _resolve_targeting(
     creds: Dict[str, str],
     args: argparse.Namespace,
+    *,
+    sink: EventSink = _stdout_sink,
 ) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Run analyse + search with optional CLI overrides.
 
@@ -518,7 +586,8 @@ def _resolve_targeting(
     """
     description = getattr(args, "description", "") or ""
     if description.strip():
-        analysis = step_analyse(creds, description, provider=args.provider)
+        analysis = step_analyse(creds, description, provider=args.provider,
+                                 sink=sink)
     else:
         analysis = {"summary": "", "keywords": [], "topics": [],
                      "value_prop": "", "source": "override"}
@@ -535,6 +604,7 @@ def _resolve_targeting(
         min_stars=args.min_stars,
         repo_limit=args.repo_limit,
         own_repo=_own_repo_full_name(getattr(args, "project_url", "") or ""),
+        sink=sink,
     )
     return analysis, repos
 
@@ -834,13 +904,13 @@ def main() -> int:
     sfr.add_argument("--template-only", action="store_true")
     sfr.add_argument("--prewritten-subject", default=None,
                       help="Skip LLM compose: use this exact subject for every "
-                           "recipient. Supports {login}, {starred_repo}, "
-                           "{project_name}, {project_url} placeholders. "
+                           "recipient. Supports {{login}}, {{starred_repo}}, "
+                           "{{project_name}}, {{project_url}} placeholders. "
                            "Requires --prewritten-body.")
     sfr.add_argument("--prewritten-body", default=None,
                       help="Skip LLM compose: path to a UTF-8 file whose "
                            "contents are used as the body for every recipient. "
-                           "Same placeholders as --prewritten-subject.")
+                           "Same {{placeholder}} format as --prewritten-subject.")
     sfr.add_argument("--unsubscribe-base", default="http://localhost:8765")
     sfr.add_argument("--reply-to", default=None)
 

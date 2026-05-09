@@ -46,6 +46,13 @@ LLM compose를 건너뛰고 사용자가 미리 작성한 본문을 쓸 때의 �
 치환은 `.replace()`로, Python format이 아닙니다 — 본문에 `{` `}` 문자가
 들어가도 안 깨지게.
 
+## Twitter v2 Client
+
+`scripts/lib/twitter_v2.py`. 단일 모듈에서 Twitter v2 user-context bearer
+호출과 401 시 refresh-token 회전을 처리합니다. `request()`는 generic 호출,
+`post_tweet()`은 thread/reply 공통 헬퍼. 예외는 `TwitterAuthError`(401 후
+refresh 실패)와 `TwitterApiError`(그 외 HTTP/네트워크 실패) 두 개. ADR 0002 참고.
+
 ## Sniffer
 
 생성된 카피가 "AI같다"는 신호를 검출하는 결정론적 휴리스틱.

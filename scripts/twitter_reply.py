@@ -30,119 +30,22 @@ import argparse
 import json
 import sys
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
-from creds import load as load_creds, read_body_from_stdin_or_arg, save_many, CredsError  # noqa: E402
+from creds import load as load_creds, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+import twitter_v2  # noqa: E402
 
 V2_SEARCH_URL = "https://api.twitter.com/2/tweets/search/recent"
-V2_TWEETS_URL = "https://api.twitter.com/2/tweets"
-V2_TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
-
-
-class _OAuth2Unauthorized(Exception):
-    pass
-
-
-class _V2Error(Exception):
-    pass
 
 
 def _emit(event: str, **fields: Any) -> None:
     record = {"ts": time.time(), "event": event, **fields}
     sys.stdout.write(json.dumps(record, ensure_ascii=False) + "\n")
     sys.stdout.flush()
-
-
-def _v2_get(url: str, bearer: str) -> Dict[str, Any]:
-    req = urllib.request.Request(
-        url,
-        headers={"Authorization": f"Bearer {bearer}"},
-        method="GET",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        if e.code == 401:
-            raise _OAuth2Unauthorized() from e
-        body = e.read().decode(errors="replace")[:300]
-        raise _V2Error(f"{e.code} {body}") from e
-
-
-def _v2_post(url: str, bearer: str, payload: dict) -> Dict[str, Any]:
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode(),
-        headers={
-            "Authorization": f"Bearer {bearer}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        if e.code == 401:
-            raise _OAuth2Unauthorized() from e
-        body = e.read().decode(errors="replace")[:300]
-        raise _V2Error(f"{e.code} {body}") from e
-
-
-def _refresh_oauth2(creds: Dict[str, str]) -> Optional[str]:
-    """Same refresh logic as post_twitter.py — kept here so each script is
-    self-contained. Persists the rotated tokens via creds.save_many."""
-    import base64
-
-    rt = creds.get("TWITTER_OAUTH2_REFRESH")
-    cid = creds.get("TWITTER_OAUTH2_CLIENT_ID")
-    csec = creds.get("TWITTER_OAUTH2_CLIENT_SECRET")
-    if not rt or not cid or not csec:
-        return None
-
-    body = urllib.parse.urlencode({
-        "grant_type": "refresh_token",
-        "refresh_token": rt,
-        "client_id": cid,
-    }).encode()
-    basic = base64.b64encode(f"{cid}:{csec}".encode()).decode()
-    req = urllib.request.Request(
-        V2_TOKEN_URL,
-        data=body,
-        headers={
-            "Authorization": f"Basic {basic}",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            tok = json.loads(resp.read())
-    except Exception as e:
-        print(f"WARN: oauth2 refresh failed: {e}", file=sys.stderr)
-        return None
-
-    new_bearer = tok.get("access_token")
-    new_refresh = tok.get("refresh_token")
-    if not new_bearer:
-        return None
-
-    to_save = {"TWITTER_OAUTH2_BEARER": new_bearer}
-    if new_refresh and new_refresh != rt:
-        to_save["TWITTER_OAUTH2_REFRESH"] = new_refresh
-    try:
-        save_many(to_save)
-    except Exception as e:
-        print(f"WARN: persisting rotated tokens failed: {e}", file=sys.stderr)
-
-    creds.update(to_save)
-    return new_bearer
 
 
 # --------------------------------------------------------------------------- #
@@ -229,11 +132,6 @@ def cmd_find(args: argparse.Namespace) -> int:
         _emit("fatal", reason=str(e))
         return 2
 
-    bearer = creds.get("TWITTER_OAUTH2_BEARER")
-    if not bearer:
-        _emit("fatal", reason="TWITTER_OAUTH2_BEARER missing — log in via the dashboard first")
-        return 2
-
     params = urllib.parse.urlencode({
         "query": query,
         "max_results": min(max(args.max_candidates, 10), 100),
@@ -244,18 +142,11 @@ def cmd_find(args: argparse.Namespace) -> int:
     url = f"{V2_SEARCH_URL}?{params}"
 
     try:
-        data = _v2_get(url, bearer)
-    except _OAuth2Unauthorized:
-        new_bearer = _refresh_oauth2(creds)
-        if not new_bearer:
-            _emit("fatal", reason="oauth2 401 and refresh failed")
-            return 2
-        try:
-            data = _v2_get(url, new_bearer)
-        except (_OAuth2Unauthorized, _V2Error) as e:
-            _emit("fatal", reason=f"v2 search failed after refresh: {e}")
-            return 2
-    except _V2Error as e:
+        data = twitter_v2.request(creds, "GET", url)
+    except twitter_v2.TwitterAuthError as e:
+        _emit("fatal", reason=str(e))
+        return 2
+    except twitter_v2.TwitterApiError as e:
         _emit("fatal", reason=f"v2 search failed: {e}")
         return 2
 
@@ -312,16 +203,6 @@ def cmd_reply(args: argparse.Namespace) -> int:
         _emit("fatal", reason=str(e))
         return 2
 
-    bearer = creds.get("TWITTER_OAUTH2_BEARER")
-    if not bearer:
-        _emit("fatal", reason="TWITTER_OAUTH2_BEARER missing — log in via the dashboard first")
-        return 2
-
-    payload = {
-        "text": body,
-        "reply": {"in_reply_to_tweet_id": args.tweet_id},
-    }
-
     if args.dry_run:
         _emit("reply_dry_run",
               in_reply_to=args.tweet_id, body=body, length=len(body))
@@ -329,33 +210,19 @@ def cmd_reply(args: argparse.Namespace) -> int:
 
     _emit("reply_start", in_reply_to=args.tweet_id, length=len(body))
 
-    refreshed = False
     try:
-        result = _v2_post(V2_TWEETS_URL, bearer, payload)
-    except _OAuth2Unauthorized:
-        new_bearer = _refresh_oauth2(creds)
-        if not new_bearer:
-            _emit("fatal", reason="oauth2 401 and refresh failed")
-            return 2
-        bearer = new_bearer
-        refreshed = True
-        try:
-            result = _v2_post(V2_TWEETS_URL, bearer, payload)
-        except (_OAuth2Unauthorized, _V2Error) as e:
-            _emit("fatal", reason=f"reply failed after refresh: {e}")
-            return 2
-    except _V2Error as e:
-        _emit("fatal", reason=f"reply failed: {e}")
+        new_id = twitter_v2.post_tweet(creds, text=body,
+                                         in_reply_to_tweet_id=args.tweet_id)
+    except twitter_v2.TwitterAuthError as e:
+        _emit("fatal", reason=str(e))
         return 2
-
-    new_id = (result.get("data") or {}).get("id")
-    if not new_id:
-        _emit("fatal", reason=f"no id in response: {result}")
+    except twitter_v2.TwitterApiError as e:
+        _emit("fatal", reason=f"reply failed: {e}")
         return 2
 
     handle = creds.get("TWITTER_HANDLE", "i")
     url = f"https://x.com/{handle}/status/{new_id}"
-    _emit("reply_done", id=new_id, url=url, refreshed=refreshed)
+    _emit("reply_done", id=new_id, url=url)
     print(url)
     return 0
 

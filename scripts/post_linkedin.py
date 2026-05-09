@@ -16,7 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
-from creds import load as load_creds, require, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+from creds import load as load_creds, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+from platforms import require_configured  # noqa: E402
 
 
 API_ROOT = "https://api.linkedin.com/v2"
@@ -30,7 +31,7 @@ def main() -> int:
 
     try:
         creds = load_creds()
-        c = require(creds, ["LINKEDIN_ACCESS_TOKEN", "LINKEDIN_PERSON_URN"], "linkedin")
+        require_configured("linkedin", creds)
         body = read_body_from_stdin_or_arg(args.body)
     except CredsError as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -47,13 +48,13 @@ def main() -> int:
         return 2
 
     headers = {
-        "Authorization": f"Bearer {c['LINKEDIN_ACCESS_TOKEN']}",
+        "Authorization": f"Bearer {creds['LINKEDIN_ACCESS_TOKEN']}",
         "X-Restli-Protocol-Version": "2.0.0",
         "Content-Type": "application/json",
     }
 
     payload = {
-        "author": c["LINKEDIN_PERSON_URN"],
+        "author": creds["LINKEDIN_PERSON_URN"],
         "lifecycleState": "PUBLISHED",
         "specificContent": {
             "com.linkedin.ugc.ShareContent": {

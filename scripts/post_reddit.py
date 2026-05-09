@@ -13,7 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "lib"))
 
-from creds import load as load_creds, require, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+from creds import load as load_creds, read_body_from_stdin_or_arg, CredsError  # noqa: E402
+from platforms import require_configured  # noqa: E402
 
 
 def main() -> int:
@@ -26,11 +27,7 @@ def main() -> int:
 
     try:
         creds = load_creds()
-        c = require(
-            creds,
-            ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_USERNAME", "REDDIT_PASSWORD"],
-            "reddit",
-        )
+        require_configured("reddit", creds)
         body = read_body_from_stdin_or_arg(args.body)
     except CredsError as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -42,13 +39,14 @@ def main() -> int:
         print("ERROR: praw not installed. Run: pip install praw", file=sys.stderr)
         return 2
 
-    user_agent = creds.get("REDDIT_USER_AGENT", "viralman/0.1.0 by " + c["REDDIT_USERNAME"])
+    user_agent = creds.get("REDDIT_USER_AGENT",
+                            "viralman/0.1.0 by " + creds["REDDIT_USERNAME"])
 
     reddit = praw.Reddit(
-        client_id=c["REDDIT_CLIENT_ID"],
-        client_secret=c["REDDIT_CLIENT_SECRET"],
-        username=c["REDDIT_USERNAME"],
-        password=c["REDDIT_PASSWORD"],
+        client_id=creds["REDDIT_CLIENT_ID"],
+        client_secret=creds["REDDIT_CLIENT_SECRET"],
+        username=creds["REDDIT_USERNAME"],
+        password=creds["REDDIT_PASSWORD"],
         user_agent=user_agent,
     )
 

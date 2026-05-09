@@ -479,33 +479,25 @@ def _run_send_job(job: "GitmailJob") -> None:
         job.append({"event": "fatal", "reason": f"{type(e).__name__}: {e}"})
 
 
-CREDS_BY_PLATFORM = {
-    "twitter": ["TWITTER_API_KEY", "TWITTER_API_SECRET",
-                 "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET"],
-    "reddit": ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
-                "REDDIT_USERNAME", "REDDIT_PASSWORD"],
-    "linkedin": ["LINKEDIN_ACCESS_TOKEN", "LINKEDIN_PERSON_URN"],
-    "github": ["GITHUB_TOKEN"],
-    "smtp": ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"],
-    "claude": ["ANTHROPIC_API_KEY"],
-    "openai": ["OPENAI_API_KEY"],
-    "gemini": ["GEMINI_API_KEY"],
-}
-
-
 def _creds_status() -> Dict[str, Dict[str, Any]]:
+    """Per-platform configuration status, sourced from the platforms registry
+    so the dashboard, check_creds.py, and post_*.py all agree on what's
+    needed."""
+    from platforms import PLATFORMS, is_configured, present_keys, missing_keys
+
     try:
         creds = load_creds()
     except CredsError:
         creds = {}
     out: Dict[str, Dict[str, Any]] = {}
-    for platform, keys in CREDS_BY_PLATFORM.items():
-        present = [k for k in keys if creds.get(k)]
-        out[platform] = {
-            "configured": len(present) == len(keys),
-            "present": present,
-            "missing": [k for k in keys if not creds.get(k)],
+    for name, spec in PLATFORMS.items():
+        out[name] = {
+            "configured": is_configured(spec, creds),
+            "present": present_keys(spec, creds),
+            "missing": missing_keys(spec, creds),
         }
+
+    # Identity hints — surfaced in the connect dropdown when set.
     handle = creds.get("TWITTER_HANDLE")
     if handle:
         out["twitter"]["handle"] = handle

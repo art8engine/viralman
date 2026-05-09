@@ -46,6 +46,14 @@ LLM compose를 건너뛰고 사용자가 미리 작성한 본문을 쓸 때의 �
 치환은 `.replace()`로, Python format이 아닙니다 — 본문에 `{` `}` 문자가
 들어가도 안 깨지게.
 
+## Platform Spec / Registry
+
+`scripts/lib/platforms.py`. 각 플랫폼이 어떤 자격증명 키를 요구하고 어떻게
+identity check를 하는지 단일 출처. `PlatformSpec`은 `required_groups`(OR-of-AND)
+와 선택적 `check_fn`을 가집니다. Twitter처럼 두 인증 모드(OAuth2 bearer /
+OAuth1 4-key)가 alternative인 경우 그룹 두 개로 표현. dashboard 상태 엔드포인트,
+`check_creds.py`, post_*.py 가드가 모두 이 레지스트리를 소비합니다. ADR 0003.
+
 ## Twitter v2 Client
 
 `scripts/lib/twitter_v2.py`. 단일 모듈에서 Twitter v2 user-context bearer

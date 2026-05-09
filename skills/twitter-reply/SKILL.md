@@ -20,7 +20,14 @@ If the user says only "트위터에 올려줘" / "x에 올려줘" — that's the
 
 ## Pre-flight
 
-Run `./scripts/save_creds.py --show-keys` and confirm:
+**Script location guard (run this first).** The skill operates against `./scripts/save_creds.py` and `./scripts/twitter_reply.py` in the current working directory (the viralman repo). If those files are not present (e.g. invoked from another project), **do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` — the permission layer reads any traversal of that path as credential discovery and will block. Instead call `AskUserQuestion` **once** with:
+
+- "Switch to the viralman repo and rerun" — stop now; user will `cd` and reinvoke.
+- "Cancel" — abort cleanly.
+
+Pick the first option as the default. Only proceed past this gate when `test -f ./scripts/save_creds.py` succeeds.
+
+Once the scripts are local, run `./scripts/save_creds.py --show-keys` and confirm:
 
 - `TWITTER_OAUTH2_BEARER` — required for both search (`tweet.read`) and reply (`tweet.write`). The dashboard PKCE login covers both scopes.
 - one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`, or detect Claude Code CLI via `which claude` (used to compose per-candidate reply bodies).

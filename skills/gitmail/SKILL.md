@@ -32,7 +32,14 @@ When the user enters via `/gitmail`, the argument parsing in `commands/gitmail.m
 
 ## Pre-flight
 
-Run `./scripts/save_creds.py --show-keys` and confirm (never print the values):
+**Script location guard (run this first).** The skill operates against `./scripts/save_creds.py` and `./scripts/gitmail.py` in the current working directory (the viralman repo). If those files are not present (e.g. invoked from another project), **do not** `ls`/`find`/probe `~/.claude/plugins/cache/viralman/**` — the permission layer reads any traversal of that path as credential discovery and will block. Instead call `AskUserQuestion` **once** with:
+
+- "Switch to the viralman repo and rerun" — stop now; user will `cd` and reinvoke.
+- "Cancel" — abort cleanly.
+
+Pick the first option as the default. Only proceed past this gate when `test -f ./scripts/save_creds.py` succeeds.
+
+Once the scripts are local, run `./scripts/save_creds.py --show-keys` and confirm (never print the values):
 
 - `GITHUB_TOKEN` — without it, GitHub API caps at 60 req/h.
 - one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`, **or** detect Claude Code CLI via `which claude`.

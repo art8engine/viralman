@@ -50,8 +50,6 @@ import github_search  # noqa: E402,F401
 import smtp_send  # noqa: E402,F401
 from unsubscribe import (  # noqa: E402
     record_unsubscribe as _record_unsubscribe_lib,
-    load_unsubscribed_emails,
-    token_email_map_path,
 )
 
 
@@ -113,40 +111,12 @@ UNSUBSCRIBES: Dict[str, float] = {}
 
 
 def record_unsubscribe(token: str) -> None:
-    """Record an unsubscribe in the in-memory map and persist via shared lib."""
+    """Persist via the shared lib and keep an in-memory record so the route's
+    test suite can verify that this process saw the unsubscribe. The send
+    pipeline itself reads from disk via lib's load_unsubscribed_emails — see
+    ADR 0001 — so this dict is no longer load-bearing for the send path."""
     UNSUBSCRIBES[token] = time.time()
     _record_unsubscribe_lib(token)
-
-
-def _load_unsubscribed_emails() -> set[str]:
-    """Resolve unsubscribed *emails*: lib's on-disk join, plus any in-memory
-    UNSUBSCRIBES tokens that already have a token→email mapping on disk."""
-    base = load_unsubscribed_emails()
-    if not UNSUBSCRIBES:
-        return base
-    map_path = token_email_map_path()
-    if not map_path.exists():
-        return base
-    try:
-        token_to_email: Dict[str, str] = {}
-        with map_path.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                tok = row.get("token")
-                email = row.get("email")
-                if tok and email:
-                    token_to_email[tok] = email.lower()
-        extra = {token_to_email[t] for t in UNSUBSCRIBES.keys()
-                 if t in token_to_email}
-        return base | extra
-    except Exception:
-        return base
 
 
 # --------------------------------------------------------------------------- #

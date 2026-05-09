@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viralman"
-version = "0.3.1"
+version = "0.4.0"
 description = "Local dashboard + multi-platform poster + gitmail outreach for open-source maintainers."
 readme = "README.md"
 license = { text = "MIT" }

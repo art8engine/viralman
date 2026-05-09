@@ -1,8 +1,8 @@
 <h1 align="center">viralman</h1>
 
 <p align="center">
-  <b>コードは君が、バズはこっちが。</b><br>
-  作るだけでいい。拡散は viralman がやる。
+  <b>コードはあなたが、バズはこちらが。</b><br>
+  作るだけで大丈夫です。拡散は viralman にお任せください。
 </p>
 
 <p align="center">
@@ -18,39 +18,39 @@
 
 ---
 
-プロジェクトの説明を渡すと、Twitter/X 投稿、Reddit スレッド、そして GitHub で似たリポにスターした開発者へのコールドメールの下書きをまとめて出す。OSS でも副業プロジェクトでも何でも使える。送信するかどうかは自分が決める。
+プロジェクトの説明をお渡しいただければ、Twitter/X 投稿、Reddit スレッド、そして GitHub で似たリポにスターした開発者へのコールドメールの下書きをまとめて出力いたします。OSS でも副業プロジェクトでも、どちらでもお使いいただけます。送信するかどうかはご自身で決めていただけます。
 
 ```bash
-viralman                 # http://localhost:8765 が自動で開く
+viralman                 # http://localhost:8765 が自動で開きます
 ```
 
 ## 機能
 
-- **マルチプラットフォーム下書き** — `/viral` 一発で Reddit / X / LinkedIn 用の下書き。AI 臭なし。
-- **ローカルダッシュボード** — ダーク基調の 4 ステップ: プロジェクト → 生成 → ターゲット → 送信。ログインは上部に統一。
-- **gitmail アウトリーチ** — GitHub で似たリポを探し、スターした人に短い個別メール。1 回最大 1,500 通（GraphQL のプロフィール一括取得 + REST PushEvent フォールバックで、GitHub の 2 つの独立した 5,000/hr バケットを併用）、ワンクリック解除リンク自動付与。
-- **Twitter リプライ候補** — `/twitter-reply` が最近の X ツイートから「これ作ったんで、ちょっと見てもらえます？」と返すのが自然な投稿を検索し、ダッシュボードの `/twitter-reply` ページにカード（本文 / 作者 / リンク / エンゲージ）として並べます。返信送信はツイートごとに明示的な確認が必要。
-- **AI 痕跡スニファ** — 約 30 のヒューリスティクスでクリシェ、em-dash 過剰、整いすぎた三項列挙、アンカー欠落を検出。最大 3 回リライト、それでもダメなら自動配信を拒否。
-- **OAuth または手動** — ダッシュボードで X / Reddit / LinkedIn にログインするか、トークン直貼り。秘密値は LLM コンテキストに絶対入らない。
-- **マルチ LLM** — Claude / OpenAI / Gemini から選択（保存済みキーで自動判別）。
+- **マルチプラットフォーム下書き** — `/viral` 一発で Reddit / X / LinkedIn 用の下書きを生成します。AI 臭はありません。
+- **ローカルダッシュボード** — ダーク基調の 4 ステップです (プロジェクト → 生成 → ターゲット → 送信)。ログインは上部に統一されています。
+- **gitmail アウトリーチ** — GitHub で似たリポを探し、スターしたユーザーに短い個別メールをお送りします。1 回最大 1,500 通(GraphQL のプロフィール一括取得 + REST PushEvent フォールバックで、GitHub の 2 つの独立した 5,000/hr バケットを併用)、ワンクリック解除リンクが自動付与されます。
+- **Twitter リプライ候補** — `/twitter-reply` が最近の X ツイートから「これ作ったんで、ちょっと見てもらえます?」と返すのが自然な投稿を検索し、ダッシュボードの `/twitter-reply` ページにカード(本文 / 作者 / リンク / エンゲージ)として並べてご提示します。返信送信はツイートごとに明示的なご確認が必要です。
+- **AI 痕跡スニファ** — 約 30 のヒューリスティクスでクリシェ、em-dash 過剰、整いすぎた三項列挙、アンカー欠落を検出します。最大 3 回リライト、それでも基準に達しない場合は自動配信を拒否します。
+- **OAuth または手動** — ダッシュボードで X / Reddit / LinkedIn にログインしていただくか、トークンを直貼りいただけます。秘密値は LLM コンテキストには絶対に入りません。
+- **マルチ LLM** — Claude / OpenAI / Gemini からお選びいただけます (保存済みキーで自動判別されます)。
 
-## こんな時に使う
+## こんな時にお使いいただけます
 
-- **v1.0 ローンチ** — 何をリリースしたか書けば、r/programming 向け Reddit 投稿、X スレッド、LinkedIn 告知、類似ツールにスターした開発者のアウトリーチリストまで一気に。
-- **副業プロジェクトの告知** — 3 プラットフォーム用に書き分け不要。一度入力 → 全チャネル。
-- **どこに投稿すべきか分からない** — viralman がキーワードからサブレディット、ハッシュタグ、コメントできる最近のスレッドをスクレイプして提案。
-- **類似ツールの古いスター持ちを再エンゲージ** — gitmail が公開プロフィールとコミットメールから受信者リストを作り、相手がスターしたリポに触れる導入で個別化。
-- **AI スロップ回避** — 大半の「AI 投稿ツール」は一発でバレる。スニファこそ viralman の差別化点。
+- **v1.0 ローンチ** — 何をリリースしたかを書いていただければ、r/programming 向け Reddit 投稿、X スレッド、LinkedIn 告知、類似ツールにスターした開発者のアウトリーチリストまで一気にご用意いたします。
+- **副業プロジェクトの告知** — 3 プラットフォーム用に書き分けていただく必要はありません。一度のご入力で全チャネルに対応いたします。
+- **どこに投稿すべきか分からないとき** — viralman がキーワードからサブレディット、ハッシュタグ、コメントできる最近のスレッドをスクレイプしてご提案いたします。
+- **類似ツールの古いスター持ちを再エンゲージ** — gitmail が公開プロフィールとコミットメールから受信者リストを作成し、相手がスターしたリポに触れる導入で個別化いたします。
+- **AI スロップ回避** — 大半の「AI 投稿ツール」は一発で見抜かれます。スニファこそ viralman の差別化点です。
 
 ## インストール
 
-3 つのパス。通常はパス 1、Claude Code を使わない場合はパス 2、CI / 自動化はパス 3 を選んでください。
+3 つのパスをご用意しております。通常はパス 1、Claude Code をお使いでない場合はパス 2、CI / 自動化はパス 3 をお選びください。
 
-> 以下の手動セットアップに従っても構いませんが、Claude Code プラグイン（パス 1）をインストールしてエージェントにセットアップを手伝ってもらう方法をお勧めします。
+> 以下の手動セットアップに従っていただいても構いませんが、Claude Code プラグイン(パス 1)をインストールしてエージェントにセットアップを手伝ってもらう方法をお勧めいたします。
 
-### パス 1 — Claude Code プラグイン（推奨）
+### パス 1 — Claude Code プラグイン(推奨)
 
-ほとんどの Claude Code ユーザーに推奨する marketplace/plugin インストール。下の 2 行は Claude Code のスラッシュコマンドなので **1 行ずつ** 入力してください（2 行を一度に貼り付けると失敗します）:
+ほとんどの Claude Code ユーザーにお勧めする marketplace/plugin インストールです。下の 2 行は Claude Code のスラッシュコマンドですので、**1 行ずつ** ご入力ください(2 行を一度に貼り付けると失敗いたします):
 
 ```
 /plugin marketplace add https://github.com/art8engine/viralman
@@ -62,26 +62,26 @@ viralman                 # http://localhost:8765 が自動で開く
 /plugin install viralman
 ```
 
-リポジトリをローカルに clone 済みなら、URL の代わりに `./` も使えます:
+リポジトリをローカルに clone 済みでしたら、URL の代わりに `./` もご使用いただけます:
 
 ```
 /plugin marketplace add ./
 ```
 
-インストール後はコマンドを覚える必要はなく、`"ダッシュボードを開いて"`、`"viralman をセットアップして"`、`"async-profiler のスターガザーにメール"` のように自然言語で話しかければ、エージェントが `/dashboard`、`/viralman-setup`、`/gitmail`、`/viral` のうち適切なものを発動します。送信直前には (1) 言語 (2) 件名スタイル (3) 最終確認 の順に確認されます。
+インストール後はコマンドを覚えていただく必要はなく、`"ダッシュボードを開いて"`、`"viralman をセットアップして"`、`"async-profiler のスターガザーにメール"` のように自然言語で話しかけていただければ、エージェントが `/dashboard`、`/viralman-setup`、`/gitmail`、`/viral` のうち適切なものを発動いたします。送信直前には (1) 言語 (2) 件名スタイル (3) 最終確認 の順にご確認いただきます。
 
-### パス 2 — pipx インストール（Claude Code 不要）
+### パス 2 — pipx インストール(Claude Code 不要)
 
-Claude Code なしでローカルダッシュボード + 素の CLI だけ使いたい場合:
+Claude Code なしでローカルダッシュボード + 素の CLI だけお使いになりたい場合:
 
 ```bash
 pipx install git+https://github.com/art8engine/viralman
 viralman   # → http://localhost:8765
 ```
 
-`pipx` が独立した venv を作って `viralman` コマンドを `$PATH` に登録してくれます。既存の venv があれば `pip install git+...` でも同じです。ダッシュボードの 4 タブ（Twitter / Reddit / Gitmail / Setup）で全作業が完結し、スラッシュコマンドは Claude Code が必要です。
+`pipx` が独立した venv を作って `viralman` コマンドを `$PATH` に登録いたします。既存の venv をお使いの場合は `pip install git+...` でも同様にお使いいただけます。ダッシュボードの 4 タブ(Twitter / Reddit / Gitmail / Setup)で全作業が完結いたしますが、スラッシュコマンドは Claude Code が必要となります。
 
-### パス 3 — clone して直接実行（CI / headless / 自動化）
+### パス 3 — clone して直接実行(CI / headless / 自動化)
 
 スクリプトや CI パイプラインから明示的な引数で叩きたい場合:
 
@@ -91,13 +91,13 @@ pip install .
 ./scripts/gitmail.py run --description "..." --max-users 100 --dry-run
 ```
 
-gitmail / viral の全フラグ一覧は下の [使用例](#使用例) を参照してください。
+gitmail / viral の全フラグ一覧は下の [使用例](#使用例) をご参照ください。
 
 ## 使用例
 
-### Block A — Claude Code の中で自然言語（パス 1 ユーザー）
+### Block A — Claude Code の中で自然言語(パス 1 ユーザー)
 
-そのまま言葉で — エージェントが適切なスラッシュコマンドを自動で発動します:
+そのまま言葉でお伝えください — エージェントが適切なスラッシュコマンドを自動で発動いたします:
 
 ```
 "似たリポをスターした人にメールを送って"
@@ -107,10 +107,10 @@ gitmail / viral の全フラグ一覧は下の [使用例](#使用例) を参照
 "viralman をセットアップして"
 ```
 
-エージェントが `/gitmail`、`/viral`、`/dashboard`、`/viralman-setup` を自動で発動します。
-送信直前に (1) 言語 (2) 件名スタイル (3) 最終確認 の順に確認します。
+エージェントが `/gitmail`、`/viral`、`/dashboard`、`/viralman-setup` を自動で発動いたします。
+送信直前に (1) 言語 (2) 件名スタイル (3) 最終確認 の順にご確認いただきます。
 
-### Block B — スラッシュコマンドを直接入力（パス 1 パワーユーザー）
+### Block B — スラッシュコマンドを直接入力(パス 1 パワーユーザー)
 
 ```
 /viralman-setup gitmail
@@ -120,7 +120,7 @@ gitmail / viral の全フラグ一覧は下の [使用例](#使用例) を参照
 /viral K8s autoscaler が 3 週間で本番コストを 47% 削減 --mode growth-story
 ```
 
-### Block C — スクリプト直接呼び出し（パス 3 / CI / headless）
+### Block C — スクリプト直接呼び出し(パス 3 / CI / headless)
 
 ```bash
 # 1) 認証情報を保存
@@ -128,12 +128,12 @@ read -rs -p 'GITHUB_TOKEN: ' s && printf '%s' "$s" | ./scripts/save_creds.py --s
 ./scripts/save_creds.py --set SMTP_HOST=smtp.gmail.com --set SMTP_PORT=587 --set SMTP_USER=you@gmail.com --set SMTP_FROM=you@gmail.com
 read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --stdin SMTP_PASSWORD; unset s
 
-# 2) 受信者を収集（シードリポを直接指定）
+# 2) 受信者を収集(シードリポを直接指定)
 ./scripts/gitmail.py recipients \
   --seed-repos jvm-profiling/async-profiler,oracle/graal \
   --max-users 100 > recipients.json
 
-# 3) トーン・強調・件名スタイルを反映した dry-run —— 送信前に確認
+# 3) トーン・強調・件名スタイルを反映した dry-run — 送信前にご確認ください
 ./scripts/gitmail.py send-from-recipients \
   --recipients-file recipients.json \
   --project-name myproj \
@@ -143,7 +143,7 @@ read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --
   --subject-style headline \
   --dry-run
 
-# 4) 確認後に --dry-run を外して再実行すると本送信
+# 4) ご確認後に --dry-run を外して再実行いただくと本送信となります
 ./scripts/gitmail.py send-from-recipients \
   --recipients-file recipients.json \
   --project-name myproj \
@@ -155,9 +155,9 @@ read -rs -p 'SMTP_PASSWORD: ' s && printf '%s' "$s" | ./scripts/save_creds.py --
 
 ## メール送信例
 
-### 韓国語自動生成（デフォルト）
+### 韓国語自動生成(デフォルト)
 
-オプションなしで呼び出すと韓国語で生成されます（システムデフォルト）：
+オプションなしで呼び出していただくと、韓国語で生成されます(システムデフォルト):
 
 ```
 SUBJECT: 안녕하세요, 이제 당신도 쉽게 사이드 프로젝트를 알릴 수 있습니다.
@@ -173,7 +173,7 @@ AI가 프로젝트를 분석해 어울리는 홍보 멘트를 만들어주고, �
 관심이 있다면 이 링크를 확인하세요: https://github.com/art8engine/viralman
 ```
 
-### 英語（自然言語 `--tone "in English"` 経由）
+### 英語(自然言語 `--tone "in English"` 経由)
 
 Add `--tone "in English"` (or natural-language equivalents like `영어로 써줘` / `中文で`) to switch:
 
@@ -194,31 +194,31 @@ If you're curious, here is the link: https://github.com/art8engine/viralman
 ## 認証情報
 
 ```bash
-/viralman-setup            # チャンネル選択 (gitmail / twitter / reddit / linkedin) して設定
-/viralman-setup gitmail    # gitmail ブランチへ直行
-/viralman-setup --check    # 保存済みキー一覧を確認
+/viralman-setup            # チャンネルをお選びいただき (gitmail / twitter / reddit / linkedin) 設定します
+/viralman-setup gitmail    # gitmail ブランチへ直行いたします
+/viralman-setup --check    # 保存済みキーの一覧をご確認いただけます
 ```
 
-チャンネル別レガシーコマンド: `/viralman-login-reddit`（約 3 分）、`/viralman-login-twitter`（約 5 分）、`/viralman-login-linkedin`（約 10 分）、`/viralman-login-gitmail`（約 5 分）。
+チャンネル別レガシーコマンド: `/viralman-login-reddit`(約 3 分)、`/viralman-login-twitter`(約 5 分)、`/viralman-login-linkedin`(約 10 分)、`/viralman-login-gitmail`(約 5 分)をお使いいただけます。
 
-API キー不要でも動く: **Claude Code** があれば viralman がローカルの `claude` バイナリを自動検出し LLM 呼び出しを経由する（Claude Max plan クォータ）。ダッシュボードで `claude (Max via CLI)` を選択。
+API キーがなくても動作いたします: **Claude Code** がインストールされていれば viralman がローカルの `claude` バイナリを自動検出し LLM 呼び出しを経由いたします(Claude Max plan クォータ)。ダッシュボードで `claude (Max via CLI)` をお選びください。
 
-秘密値は LLM コンテキストに入らない —— `read -s` で `~/.viralman/.env`（`chmod 600`）へ直接書き込み。
+秘密値は LLM コンテキストには入りません — `read -s` で `~/.viralman/.env`(`chmod 600`)へ直接書き込まれます。
 
 ## 使い方
 
-### ダッシュボード（推奨）
+### ダッシュボード(推奨)
 
 ```bash
 viralman                              # → http://localhost:8765
 ```
 
-4 ステップ:
+4 ステップでお進みいただけます:
 
-1. **プロジェクト** — 名前、URL、一言ピッチ、詳細。
-2. **生成** — チャンネル（X / Reddit / Gitmail）を選んで下書きを取得。
-3. **ターゲット** — サブレディット、ハッシュタグ、コメント先、受信者リスト。全部自動提案。
-4. **送信** — 確認してリアルタイム進捗。
+1. **プロジェクト** — 名前、URL、一言ピッチ、詳細をご入力ください。
+2. **生成** — チャンネル(X / Reddit / Gitmail)をお選びいただき、下書きを取得していただきます。
+3. **ターゲット** — サブレディット、ハッシュタグ、コメント先、受信者リストを自動でご提案いたします。
+4. **送信** — ご確認のうえ、リアルタイム進捗を表示いたします。
 
 ### スラッシュコマンド
 
@@ -231,25 +231,25 @@ viralman                              # → http://localhost:8765
 /gitmail https://github.com/you/jvm-monitor
 ```
 
-### gitmail — 5 ステップ対話フロー（CLI またはスラッシュ）
+### gitmail — 5 ステップ対話フロー(CLI またはスラッシュ)
 
-スラッシュ 1 つで完結:
+スラッシュ 1 つで完結いたします:
 
 ```bash
 /gitmail https://github.com/you/jvm-monitor
 ```
 
-5 ステップでガイドされます:
-1. **ターゲット入力** — GitHub URL または自由記述
-2. **トーン・強調入力** — "フレンドリーな開発者トーン"、"47% コスト削減を強調" のような自由入力
-3. **受信者設定** — max_users + シードリポを直接指定、またはキーワード検索
-4. **収集・確認** — 受信者プレビューで確認後、送信を承認
-5. **下書き・送信** — dry-run プレビュー → 確定 → 実送信
+5 ステップでガイドいたします:
+1. **ターゲット入力** — GitHub URL または自由記述をお寄せください。
+2. **トーン・強調入力** — 「フレンドリーな開発者トーン」、「47% コスト削減を強調」のような自由入力を承ります。
+3. **受信者設定** — max_users + シードリポを直接ご指定いただくか、キーワード検索をお使いください。
+4. **収集・確認** — 受信者プレビューでご確認のうえ、送信を承認していただきます。
+5. **下書き・送信** — dry-run プレビュー → ご確定 → 実送信の順序で進行いたします。
 
-CLI で直接 2 フェーズ実行する場合:
+CLI で直接 2 フェーズ実行なさる場合:
 
 ```bash
-# Phase 1: 収集（シードリポを直接指定）
+# Phase 1: 収集(シードリポを直接指定)
 ./scripts/gitmail.py recipients \
   --seed-repos jvm-profiling/async-profiler,oracle/graal \
   --max-users 100 \
@@ -265,7 +265,7 @@ CLI で直接 2 フェーズ実行する場合:
   --emphasis "free, OSS, JVM monitoring" \
   --dry-run
 
-# 確認後に実送信（--dry-run を外す）
+# ご確認後に実送信(--dry-run を外してください)
 ./scripts/gitmail.py send-from-recipients \
   --recipients-file recipients.json \
   --project-name jvm-monitor \
@@ -274,7 +274,7 @@ CLI で直接 2 フェーズ実行する場合:
   --emphasis "free, OSS, JVM monitoring"
 ```
 
-### gitmail CLI（ワンショット）
+### gitmail CLI(ワンショット)
 
 ```bash
 ./scripts/gitmail.py run \
@@ -300,31 +300,31 @@ CLI で直接 2 フェーズ実行する場合:
 
 ### 新フラグ
 
-- `--tone "..."` — メールトーンの自由入力（"フレンドリーな開発者"、"技術的詳細"、"簡潔に"）
-- `--emphasis "..."` — 強調点の自由入力（"47% コスト削減"、"free, OSS"）
-- `--seed-repos owner/repo,...` — 検索ステップをスキップ、これらのリポの stargazer を直接収集
-- `--keywords k1,k2` — 自動分析の代わりに指定キーワードで検索
-- `--topics t1,t2` — topics オーバーライド
+- `--tone "..."` — メールトーンの自由入力です(「フレンドリーな開発者」、「技術的詳細」、「簡潔に」)。
+- `--emphasis "..."` — 強調点の自由入力です(「47% コスト削減」、「free, OSS」)。
+- `--seed-repos owner/repo,...` — 検索ステップをスキップし、これらのリポの stargazer を直接収集いたします。
+- `--keywords k1,k2` — 自動分析の代わりにご指定のキーワードで検索いたします。
+- `--topics t1,t2` — topics をオーバーライドいたします。
 
-すべてのメールにワンクリック解除リンクと `List-Unsubscribe` ヘッダー付き。SMTP は毎分 30 通がデフォルト（`SMTP_RATE_PER_MIN` で変更可）。
+すべてのメールにワンクリック解除リンクと `List-Unsubscribe` ヘッダーが付与されます。SMTP は毎分 30 通がデフォルトです(`SMTP_RATE_PER_MIN` で変更いただけます)。
 
 ## 「AI っぽくない」仕組み
 
-`ai-tell-sniffer` が全下書きをチェック。禁止表現（"delve", "leverage", "let's dive in", "supercharge" など 20+）、60 語あたり em-dash が 1 個超、整いすぎた三項列挙、締めの説教、ハッシュタグ詰め込み、アンカーなしの一般論（数字 / 固有名 / 時刻 / 不確実性のいずれか必須）。最大 3 回リライト、それでも残れば自動配信拒否。
+`ai-tell-sniffer` が全下書きをチェックいたします。禁止表現(「delve」、「leverage」、「let's dive in」、「supercharge」など 20 余り)、60 語あたり em-dash が 1 個超、整いすぎた三項列挙、締めの説教、ハッシュタグ詰め込み、アンカーなしの一般論(数字 / 固有名 / 時刻 / 不確実性のいずれか必須)を検査いたします。最大 3 回リライト、それでも残れば自動配信を拒否いたします。
 
-韓国語出力にも 12 種のパターン（활용하여 / 결론적으로 / "X 아니라 Y" 形式など）の検出、モラライザー検知、em-dash 密度チェックが適用されます。
+韓国語出力にも 12 種のパターン(활용하여 / 결론적으로 / 「X 아니라 Y」 形式など)の検出、モラライザー検知、em-dash 密度チェックが適用されます。
 
-すべての送信経路（ダッシュボード、CLI スラッシュコマンド、直接スクリプト）は同じ退会ログを共有します。一度退会したアドレスは次のキャンペーンで自動的にスキップされます — どの経路でもポリシーは一貫しています。
+すべての送信経路(ダッシュボード、CLI スラッシュコマンド、直接スクリプト)は同じ退会ログを共有しております。一度退会されたアドレスは次のキャンペーンで自動的にスキップされます — どの経路でもポリシーは一貫しています。
 
 ## ステータス
 
-181 件のリグレッションテストで動作とポリシーを保護（Flask ルート、AI-tell 英/韓、OAuth、MIME RFC、i18n パリティ、退会一貫性、5 ステップユーザーストーリー）。
+181 件のリグレッションテストで動作とポリシーを保護しております(Flask ルート、AI-tell 英/韓、OAuth、MIME RFC、i18n パリティ、退会一貫性、5 ステップユーザーストーリー)。
 
-v0.3.0 — 5 ステップ対話式 gitmail フロー + `/viralman-setup` 統合認証情報入力 + `--tone` / `--emphasis` / `--seed-repos` フラグ。ローカルダッシュボードと v0.1.0 の `/viral` は変更なし。
+v0.3.0 — 5 ステップ対話式 gitmail フロー + `/viralman-setup` 統合認証情報入力 + `--tone` / `--emphasis` / `--seed-repos` フラグが追加されました。ローカルダッシュボードと v0.1.0 の `/viral` は変更ございません。
 
 ## コントリビュート
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) と [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) を参照。セキュリティ報告は [`SECURITY.md`](SECURITY.md)。
+[`CONTRIBUTING.md`](CONTRIBUTING.md) と [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) をご参照ください。セキュリティ報告は [`SECURITY.md`](SECURITY.md) よりお願いいたします。
 
 ## ライセンス
 

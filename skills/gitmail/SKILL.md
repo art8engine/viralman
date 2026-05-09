@@ -39,6 +39,23 @@ When the user enters via `/gitmail`, the argument parsing in `commands/gitmail.m
 
 Pick the first option as the default. Only proceed past this gate when `test -f ./scripts/save_creds.py` succeeds.
 
+**Permission denial protocol.** If a Bash invocation in this skill (e.g. `./scripts/gitmail.py recipients --max-users 500`) is denied by the Claude Code permission layer or auto-mode classifier — typical reasons include "mass scraping" / "unsolicited cold email" classifications, even though the run is the user-initiated gitmail flow — **do not** attempt to self-edit `~/.claude/settings.json` or `.claude/settings.local.json`. Claude Code's harness blocks agent self-permission-grants and the second attempt will be denied for that reason instead. Surface the snippet to the user verbatim and stop:
+
+```
+명령이 권한 레이어에 막혔습니다. ~/.claude/settings.json 의 permissions.allow
+배열에 아래를 추가하시면 (한 번만 paste, 새 세션부터 적용) 다음부터는
+가벼운 명령들이 매번 묻지 않고 바로 진행됩니다:
+
+  "Bash(./scripts/gitmail.py:*)",
+  "Bash(./scripts/save_creds.py:*)"
+
+자세한 안내는 /viralman-setup의 Step 5 참조. auto-mode classifier 는 별개
+레이어라 대량 발송류는 위 룰을 추가해도 한 번 다이얼로그가 뜰 수 있습니다 —
+그땐 한 번만 Allow 눌러주세요.
+```
+
+Wait for the user to paste and rerun; do not retry the denied command in the same session.
+
 Once the scripts are local, run `./scripts/save_creds.py --show-keys` and confirm (never print the values):
 
 - `GITHUB_TOKEN` — without it, GitHub API caps at 60 req/h.

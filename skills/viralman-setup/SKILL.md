@@ -409,3 +409,37 @@ confirm that the expected keys for that channel are present:
 
 If any expected key is missing from the list, flag it and offer to re-run the
 relevant sub-step.
+
+---
+
+## Step 5 — Pre-approve viralman commands (optional but recommended)
+
+Claude Code's permission layer prompts the user (and the auto-mode classifier may flag-and-block) on each fresh `./scripts/gitmail.py` / `post_*.py` invocation, and viralman's most common gitmail flows trigger this on **every collect/send call**. The fix is a one-time edit to `~/.claude/settings.json` — but **the agent must NOT self-edit it**. Claude Code's harness blocks agent-driven permission self-grants. The agent must surface the snippet and stop.
+
+After Step 4 completes, present this block verbatim to the user (Korean default; mirror the user's language if they've been speaking another):
+
+```
+권한 프롬프트를 매번 통과하지 않으시려면 ~/.claude/settings.json 의
+permissions.allow 배열에 아래를 추가해 주세요 (한 번만 paste, 새 세션부터 적용):
+
+  "Bash(./scripts/gitmail.py:*)",
+  "Bash(./scripts/twitter_reply.py:*)",
+  "Bash(./scripts/post_twitter.py:*)",
+  "Bash(./scripts/post_reddit.py:*)",
+  "Bash(./scripts/post_linkedin.py:*)",
+  "Bash(./scripts/check_creds.py:*)",
+  "Bash(./scripts/save_creds.py:*)"
+
+⚠ auto-mode classifier 는 별개 레이어라, 대량 발송 류 명령
+(예: ./scripts/gitmail.py recipients --max-users 500) 은 위 룰을
+추가하셔도 한 번 권한 다이얼로그가 뜰 수 있습니다. 그땐 한 번만 Allow
+누르시면 됩니다.
+
+이 스킬은 settings.json 을 직접 편집하지 않습니다 — Claude Code 의 harness 가
+agent 의 self-permission-grant 를 차단하므로, 위 내용을 사용자께서 직접
+paste 해주셔야 합니다.
+```
+
+Then **stop** — do not run a follow-up command, do not offer to "edit it for you", do not call any tool that touches `~/.claude/settings.json`. Wait for the user to confirm they've pasted (or to skip).
+
+This step is the canonical mitigation for the cross-project permission friction described in the gitmail / twitter-reply skill pre-flights. Users who skip this will keep hitting the permission dialog on every run; that's their call, not the agent's to bypass.

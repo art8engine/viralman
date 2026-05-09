@@ -276,7 +276,21 @@ def _extract_json(text: str) -> dict:
 _ANALYSE_SYS = (
     "You are an open-source project analyst. Given a short description, return "
     "compact JSON with the project's tech stack and likely GitHub topics. Be "
-    "concrete and cite only what's plausibly in the description."
+    "concrete and cite only what's plausibly in the description.\n\n"
+    "CRITICAL — project_type vs sub-features. The description often lists "
+    "many capabilities; only ONE of them is the project's actual identity. "
+    "Distinguish them.\n"
+    "  - `project_type` is the noun the user would say if asked \"what is "
+    "    this?\" — e.g. \"JVM monitoring tool\", \"data viz library\", "
+    "    \"static site generator\". Always 1-5 words.\n"
+    "  - `headline_benefit` is the ONE benefit a user gets from project_type's "
+    "    core role, not from a sub-feature.\n"
+    "  - Concrete failure mode to AVOID: a JVM monitoring tool that includes "
+    "    GC log analysis MUST classify as project_type=\"JVM monitoring "
+    "    tool\" with headline_benefit anchored on monitoring, NOT on GC "
+    "    tuning. A CLI for X with a verbose mode MUST be \"CLI for X\", not "
+    "    \"verbose-mode tool\". When in doubt, pick the broadest noun the "
+    "    description supports."
 )
 
 _ANALYSE_USER_TMPL = """Project description:
@@ -286,6 +300,8 @@ _ANALYSE_USER_TMPL = """Project description:
 
 Return ONLY JSON of the form:
 {{
+  "project_type": "<1-5 word noun phrase: what this IS, not a feature>",
+  "headline_benefit": "<one short sentence anchored on project_type's core role; NEVER on a sub-feature; this is what subject lines must use>",
   "summary": "<one-sentence summary>",
   "keywords": ["<5-10 specific tech terms>"],
   "topics": ["<3-7 likely github topic slugs>"],
@@ -303,6 +319,8 @@ def analyse_project_llm(creds: Dict[str, str], description: str,
         max_tokens=600,
     )
     data = _extract_json(raw) or {}
+    data.setdefault("project_type", "")
+    data.setdefault("headline_benefit", "")
     data.setdefault("summary", "")
     data.setdefault("keywords", [])
     data.setdefault("topics", [])
@@ -382,6 +400,13 @@ _EMAIL_SYS = (
     "- The starred_repo string MUST appear in Paragraph 1, verbatim. It must "
     "  NOT appear in the subject or in any other paragraph — only as the "
     "  opener in Paragraph 1.\n"
+    "- SUBJECT BENEFIT SOURCE — when the user prompt provides a "
+    "  `headline_benefit`, the subject's benefit clause MUST come from that "
+    "  field (lightly rephrased for natural flow). Sub-features named in "
+    "  `project_pitch` (e.g. GC tuning when project_type is a JVM monitoring "
+    "  tool, syntax-highlight when project_type is a code editor) belong in "
+    "  Paragraph 3 of the body, NEVER in the subject. This rule is the "
+    "  single most violated one in past runs — do not skip it.\n"
     "- DO NOT ask any feedback-fishing question ('what's been frustrating?', "
     "  'would love your input?', 'how do you handle X?').\n"
     "- DO NOT include command names, version numbers, regression-test "
@@ -398,7 +423,9 @@ _EMAIL_SYS = (
 )
 
 _EMAIL_USER_TMPL = """My project: {project_name}
-What it does: {project_pitch}
+What it is (project_type): {project_type}
+Headline benefit (anchor the subject on this — not on any sub-feature in the pitch below): {headline_benefit}
+What it does (full pitch — sub-features may appear here; they belong in Paragraph 3, not the subject): {project_pitch}
 Repo URL: {project_url}
 
 Recipient handle: @{login}
@@ -409,7 +436,7 @@ Recipient previously starred: {starred_repo}
 
 Write the email. Output ONLY JSON:
 {{
-  "subject": "<<= 60 chars, greeting + single benefit sentence, plain Korean by default, no clickbait, no emoji, no '!', do NOT mention the starred repo here>",
+  "subject": "<<= 60 chars, greeting + benefit clause derived from headline_benefit (NOT from any sub-feature in the pitch), plain Korean by default, no clickbait, no emoji, no '!', do NOT mention the starred repo here>",
   "body": "<plaintext, 70-140 words, FIVE one-sentence paragraphs separated by blank lines (\\n\\n between each), follows the STRUCTURE in the system prompt; the starred_repo string MUST appear verbatim in Paragraph 1>"
 }}"""
 
@@ -444,6 +471,8 @@ def compose_email(
     project_url: str,
     login: str,
     starred_repo: str,
+    project_type: str = "",
+    headline_benefit: str = "",
     provider: Optional[str] = None,
     tone: Optional[str] = None,
     emphasis: Optional[str] = None,
@@ -466,6 +495,8 @@ def compose_email(
         )
     user_prompt = _EMAIL_USER_TMPL.format(
         project_name=project_name,
+        project_type=project_type or "(not extracted; infer from the pitch below)",
+        headline_benefit=headline_benefit or "(not extracted; derive a benefit anchored on the project's core role, NOT a sub-feature)",
         project_pitch=project_pitch,
         project_url=project_url or "(none)",
         login=login,

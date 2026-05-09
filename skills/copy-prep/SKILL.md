@@ -20,16 +20,17 @@ Goal: turn `$ARGUMENTS` (URL and/or free text) into a stable struct the caller c
 {
   url: "<github URL or empty>",
   name: "<owner/repo or user-supplied name>",
-  description: "<free-text description, ≤200 chars>",
+  description: "<free-text description fed into analyse>",
   keyword: "<first-pass keyword for search>",
 }
 ```
 
 Rules:
 
-1. First token starts with `https://github.com/` → treat as URL. Do NOT fetch the README, do NOT call `gh repo view` — saves rate budget and responds faster. Derive `name` from the owner/repo path. Derive `keyword` from the repo slug.
-2. If extra free text is present, it becomes `description` (overrides the keyword guess).
-3. If both URL and description are missing, ask once and wait. Do not guess.
+1. First token starts with `https://github.com/` → treat as URL. **Do call `gh repo view <slug> --json description,homepageUrl`** to pull the project's GitHub description, and **do read the README's first ~2KB** (e.g. `gh api repos/<slug>/readme --jq .content | base64 -d | head -c 2000`). Combine into `description` so the analyse step sees the project's actual identity, not just the repo slug. Without this, `description` defaults to the slug and analyse mis-classifies projects (e.g. a JVM monitoring tool with a GC analyser sub-feature gets pitched as "GC tuner"). The 1-2 GitHub API calls cost is dwarfed by the per-recipient GraphQL/REST budget gitmail will spend later.
+2. If the user supplied free text alongside the URL, **append** it to the fetched description (don't replace) — user-supplied phrasing usually carries the angle they want emphasised.
+3. If only free text is given (no URL), use it as `description` directly.
+4. If both URL and description are missing, ask once and wait. Do not guess.
 
 Print 2–3 lines back to the user before the batch question so they have shared context:
 

@@ -121,10 +121,14 @@ def step_analyse(creds: Dict[str, str], description: str,
         analysis["source"] = "heuristic"
         analysis.setdefault("summary", description[:200])
         analysis.setdefault("value_prop", "")
+        analysis.setdefault("project_type", "")
+        analysis.setdefault("headline_benefit", "")
     sink("analyse_done",
          summary=analysis.get("summary", ""),
          keywords=analysis.get("keywords", []),
          topics=analysis.get("topics", []),
+         project_type=analysis.get("project_type", ""),
+         headline_benefit=analysis.get("headline_benefit", ""),
          source=analysis.get("source"))
     return analysis
 
@@ -351,6 +355,8 @@ def step_compose(
     subject_style: Optional[str] = None,
     prewritten_subject: Optional[str] = None,
     prewritten_body: Optional[str] = None,
+    project_type: str = "",
+    headline_benefit: str = "",
     sink: EventSink = _stdout_sink,
     cancel_check: Optional[Callable[[], bool]] = None,
 ) -> List[Dict[str, str]]:
@@ -407,6 +413,8 @@ def step_compose(
                 project_url=project_url,
                 login=r["login"],
                 starred_repo=r["starred_repo"],
+                project_type=project_type,
+                headline_benefit=headline_benefit,
                 provider=provider,
                 tone=tone,
                 emphasis=emphasis,
@@ -710,6 +718,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         tone=getattr(args, "tone", None),
         emphasis=getattr(args, "emphasis", None),
         subject_style=getattr(args, "subject_style", None),
+        project_type=str(analysis.get("project_type") or ""),
+        headline_benefit=str(analysis.get("headline_benefit") or ""),
     )
 
     result = step_send(

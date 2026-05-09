@@ -108,6 +108,10 @@ def _split_csv(value: Optional[str]) -> List[str]:
     return [p.strip() for p in value.split(",") if p.strip()]
 
 
+def _profile_extras(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: data.get(k) for k in github_search.PROFILE_EXTRAS_KEYS}
+
+
 def step_analyse(creds: Dict[str, str], description: str,
                   *, provider: Optional[str] = None,
                   sink: EventSink = _stdout_sink) -> Dict[str, Any]:
@@ -226,10 +230,8 @@ def step_recipients(
     sink("graphql_profiles_done",
          looked_up=len(profiles), email_found=profile_hits)
 
-    # Phase 2a.5 — recipient quality filter. Applied once on the GraphQL data
-    # so both the email loop below AND the PushEvent fallback in Phase 2b only
-    # see candidates that pass the filter. Dropping happens in-place on
-    # `profiles` and `cand_meta`.
+    # Apply the quality filter here, before Phase 2b — that way dropped
+    # candidates skip the REST PushEvent budget too, not just GraphQL email.
     if recipient_filter is not None and recipient_filter.is_active():
         before = len(profiles)
         rejection_breakdown: Dict[str, int] = {}
@@ -246,15 +248,6 @@ def step_recipients(
              before=before, after=len(profiles),
              dropped=before - len(profiles),
              rejection_breakdown=rejection_breakdown)
-
-    def _profile_extras(data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "followers": data.get("followers"),
-            "following": data.get("following"),
-            "public_repos": data.get("public_repos"),
-            "created_at": data.get("created_at"),
-            "bio": data.get("bio"),
-        }
 
     out: List[Dict[str, str]] = []
     for login, data in profiles.items():
@@ -617,16 +610,7 @@ def _collect_from_seed_repos(
 
 
 def _filter_from_args(args: argparse.Namespace) -> "github_search.RecipientFilter":
-    return github_search.RecipientFilter(
-        min_followers=getattr(args, "min_followers", None),
-        max_followers=getattr(args, "max_followers", None),
-        min_following=getattr(args, "min_following", None),
-        max_following=getattr(args, "max_following", None),
-        min_public_repos=getattr(args, "min_public_repos", None),
-        max_public_repos=getattr(args, "max_public_repos", None),
-        min_account_age_days=getattr(args, "min_account_age_days", None),
-        require_bio=bool(getattr(args, "require_bio", False)),
-    )
+    return github_search.RecipientFilter.from_mapping(args)
 
 
 def _resolve_targeting(

@@ -44,11 +44,14 @@ PROFILE_KEYS = (
     "followers", "following", "public_repos",
 )
 
+# The subset that recipient records carry into compose/send (everything except
+# `is_hireable`, plus `email`/`name` which already live on the recipient).
+PROFILE_EXTRAS_KEYS = ("followers", "following", "public_repos",
+                       "created_at", "bio")
+
 
 def _empty_profile() -> Dict[str, Optional[object]]:
-    """Default shape used when GraphQL fails for a login. Callers always read
-    via `.get(key)` so missing fields are safe, but keeping all keys present
-    makes the contract explicit in tests and downstream consumers."""
+    """Default shape used when GraphQL fails for a login."""
     return {k: None for k in PROFILE_KEYS}
 
 
@@ -442,6 +445,35 @@ class RecipientFilter:
     max_public_repos: Optional[int] = None
     min_account_age_days: Optional[int] = None
     require_bio: bool = False
+
+    _INT_FIELDS = ("min_followers", "max_followers",
+                   "min_following", "max_following",
+                   "min_public_repos", "max_public_repos",
+                   "min_account_age_days")
+
+    @classmethod
+    def from_mapping(cls, source: object) -> "RecipientFilter":
+        """Build a filter from anything that supports indexed/attr access:
+        argparse.Namespace, dict, or any object with the matching attributes.
+        Empty strings, empty lists, and unparseable values are treated as
+        unset — that's what dashboard JSON payloads typically send."""
+        def lookup(key: str):
+            if isinstance(source, dict):
+                return source.get(key)
+            return getattr(source, key, None)
+
+        def opt_int(key: str) -> Optional[int]:
+            v = lookup(key)
+            if v in (None, "", []):
+                return None
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        kwargs = {f: opt_int(f) for f in cls._INT_FIELDS}
+        kwargs["require_bio"] = bool(lookup("require_bio"))
+        return cls(**kwargs)
 
     def is_active(self) -> bool:
         return any((

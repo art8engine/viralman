@@ -162,6 +162,7 @@ def step_recipients(
     max_users: int,
     sink: EventSink = _stdout_sink,
     cancel_check: Optional[Callable[[], bool]] = None,
+    recipient_filter: Optional["github_search.RecipientFilter"] = None,
 ) -> List[Dict[str, str]]:
     token = creds.get("GITHUB_TOKEN")
     sink("recipients_start", target=max_users, repo_count=len(repos))
@@ -221,6 +222,36 @@ def step_recipients(
     sink("graphql_profiles_done",
          looked_up=len(profiles), email_found=profile_hits)
 
+    # Phase 2a.5 — recipient quality filter. Applied once on the GraphQL data
+    # so both the email loop below AND the PushEvent fallback in Phase 2b only
+    # see candidates that pass the filter. Dropping happens in-place on
+    # `profiles` and `cand_meta`.
+    if recipient_filter is not None and recipient_filter.is_active():
+        before = len(profiles)
+        rejection_breakdown: Dict[str, int] = {}
+        kept_profiles: Dict[str, Dict[str, Any]] = {}
+        for login, data in profiles.items():
+            reason = recipient_filter.evaluate(data)
+            if reason is None:
+                kept_profiles[login] = data
+            else:
+                rejection_breakdown[reason] = rejection_breakdown.get(reason, 0) + 1
+        profiles = kept_profiles
+        cand_meta = {k: v for k, v in cand_meta.items() if k in profiles}
+        sink("recipients_filtered",
+             before=before, after=len(profiles),
+             dropped=before - len(profiles),
+             rejection_breakdown=rejection_breakdown)
+
+    def _profile_extras(data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "followers": data.get("followers"),
+            "following": data.get("following"),
+            "public_repos": data.get("public_repos"),
+            "created_at": data.get("created_at"),
+            "bio": data.get("bio"),
+        }
+
     out: List[Dict[str, str]] = []
     for login, data in profiles.items():
         if len(out) >= max_users:
@@ -237,6 +268,7 @@ def step_recipients(
             "email": email,
             "starred_repo": repo_name,
             "profile": html,
+            **_profile_extras(data),
         }
         out.append(rec)
         sink("recipient", count=len(out), target=max_users, **rec)
@@ -277,6 +309,7 @@ def step_recipients(
                     "email": email,
                     "starred_repo": repo_name,
                     "profile": html,
+                    **_profile_extras(profiles.get(login) or {}),
                 }
                 out.append(rec)
                 sink("recipient", count=len(out), target=max_users, **rec)
@@ -563,6 +596,7 @@ def _collect_from_seed_repos(
     max_users: int,
     sink: EventSink = _stdout_sink,
     cancel_check: Optional[Callable[[], bool]] = None,
+    recipient_filter: Optional["github_search.RecipientFilter"] = None,
 ) -> List[Dict[str, str]]:
     """Skip search; treat the given repos as the seed list directly."""
     repos = [{"full_name": fn, "stars": 0} for fn in seed_repos]
@@ -570,7 +604,21 @@ def _collect_from_seed_repos(
          repos=[{"full_name": r["full_name"], "stars": 0} for r in repos],
          source="seed_repos")
     return step_recipients(creds, repos, max_users=max_users,
-                            sink=sink, cancel_check=cancel_check)
+                            sink=sink, cancel_check=cancel_check,
+                            recipient_filter=recipient_filter)
+
+
+def _filter_from_args(args: argparse.Namespace) -> "github_search.RecipientFilter":
+    return github_search.RecipientFilter(
+        min_followers=getattr(args, "min_followers", None),
+        max_followers=getattr(args, "max_followers", None),
+        min_following=getattr(args, "min_following", None),
+        max_following=getattr(args, "max_following", None),
+        min_public_repos=getattr(args, "min_public_repos", None),
+        max_public_repos=getattr(args, "max_public_repos", None),
+        min_account_age_days=getattr(args, "min_account_age_days", None),
+        require_bio=bool(getattr(args, "require_bio", False)),
+    )
 
 
 def _resolve_targeting(
@@ -623,6 +671,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     seed_repos = _split_csv(getattr(args, "seed_repos", None))
     max_users = min(args.max_users, 1500)
+    recipient_filter = _filter_from_args(args)
 
     if seed_repos:
         analysis: Dict[str, Any] = {"summary": "", "keywords": [],
@@ -632,14 +681,16 @@ def cmd_run(args: argparse.Namespace) -> int:
             analysis = step_analyse(creds, args.description,
                                      provider=args.provider)
         recipients = _collect_from_seed_repos(creds, seed_repos,
-                                                max_users=max_users)
+                                                max_users=max_users,
+                                                recipient_filter=recipient_filter)
         repos_count = len(seed_repos)
     else:
         analysis, repos = _resolve_targeting(creds, args)
         if not repos:
             _emit("fatal", reason="no similar repos found")
             return 2
-        recipients = step_recipients(creds, repos, max_users=max_users)
+        recipients = step_recipients(creds, repos, max_users=max_users,
+                                       recipient_filter=recipient_filter)
         repos_count = len(repos)
 
     if not recipients:
@@ -699,10 +750,12 @@ def cmd_recipients(args: argparse.Namespace) -> int:
 
     seed_repos = _split_csv(getattr(args, "seed_repos", None))
     max_users = min(args.max_users, 1500)
+    recipient_filter = _filter_from_args(args)
 
     if seed_repos:
         recipients = _collect_from_seed_repos(creds, seed_repos,
-                                                max_users=max_users)
+                                                max_users=max_users,
+                                                recipient_filter=recipient_filter)
     else:
         if not (args.description or "").strip():
             _emit("fatal",
@@ -712,7 +765,8 @@ def cmd_recipients(args: argparse.Namespace) -> int:
         if not repos:
             _emit("fatal", reason="no similar repos found")
             return 2
-        recipients = step_recipients(creds, repos, max_users=max_users)
+        recipients = step_recipients(creds, repos, max_users=max_users,
+                                       recipient_filter=recipient_filter)
 
     print(json.dumps(recipients, indent=2, ensure_ascii=False))
     return 0
@@ -856,10 +910,25 @@ def main() -> int:
         sp.add_argument("--repo-limit", type=int, default=15)
         sp.add_argument("--max-users", type=int, default=100)
 
+    def add_recipient_filters(sp: argparse.ArgumentParser) -> None:
+        """Profile-quality bounds applied after the GraphQL bulk lookup. All
+        optional; defaults preserve existing behaviour (no filtering). See
+        github_search.RecipientFilter."""
+        sp.add_argument("--min-followers", type=int, default=None)
+        sp.add_argument("--max-followers", type=int, default=None)
+        sp.add_argument("--min-following", type=int, default=None)
+        sp.add_argument("--max-following", type=int, default=None)
+        sp.add_argument("--min-public-repos", type=int, default=None)
+        sp.add_argument("--max-public-repos", type=int, default=None)
+        sp.add_argument("--min-account-age-days", type=int, default=None)
+        sp.add_argument("--require-bio", action="store_true",
+                         help="Drop candidates with empty/missing bio.")
+
     run = sub.add_parser("run", help="Full pipeline.")
     add_common(run)
     add_targeting(run)
     add_compose_voice(run)
+    add_recipient_filters(run)
     run.add_argument("--dry-run", action="store_true",
                       help="Render previews instead of actually sending.")
     run.add_argument("--unsubscribe-base", default="http://localhost:8765",
@@ -886,6 +955,7 @@ def main() -> int:
     rec.add_argument("--repo-limit", type=int, default=15)
     rec.add_argument("--max-users", type=int, default=100)
     add_targeting(rec)
+    add_recipient_filters(rec)
 
     sfr = sub.add_parser("send-from-recipients",
                           help="Compose+send for an already-collected recipients JSON.")

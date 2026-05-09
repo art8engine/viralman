@@ -97,6 +97,22 @@ For "Recommended seeds" — Claude shows the chosen seed repos explicitly (e.g. 
 >
 > Even after collecting 1,500, free Gmail can only deliver 500 in a day. When the SMTP daily limit is hit, `step_send` aborts cleanly, emits `send_aborted` plus a Korean stderr line, and counts the remainder as `unprocessed` (retry after the rolling 24h reset).
 
+### Recipient quality filters (natural-language → flags)
+
+These do **not** get a batch question. Translate from what the user says and pass the matching flags. If the user doesn't mention any of these, send no flags (default = no filter, current behavior).
+
+| User says (any language) | Flag(s) to add |
+|---|---|
+| "팔로워 N명 이상", "followers >= N", "influencer 위주로", "팔로워 많은 사람만" | `--min-followers N` (default N=500 if unspecified for "influencer") |
+| "팔로워 적은 사람", "early adopter", "초기 사용자" | `--max-followers 200` (or user-supplied number) |
+| "팔로잉 너무 많은 사람 빼", "follow 봇 빼고" | `--max-following 5000` |
+| "활발한 사람만", "active developer", "공개 레포 N개 이상" | `--min-public-repos 3` (or user N) |
+| "봇 빼고", "유령 계정 빼", "공개 레포 0개는 빼" | `--min-public-repos 1` |
+| "신규 가입자 빼", "오래된 계정만", "가입 N일 이상" | `--min-account-age-days 90` (or user N) |
+| "bio 없는 사람 빼", "프로필 비어있는 사람 빼" | `--require-bio` |
+
+The filter applies after the GraphQL bulk profile fetch, **before** the email-resolution loop — so dropped users don't consume the REST PushEvent budget. The `recipients_filtered` event in the stream reports `before/after/dropped` plus a per-dimension breakdown.
+
 ---
 
 ## Step 3 — Recipient collection (collect phase)
@@ -110,6 +126,10 @@ After all four answers are in, run once:
   --max-users $MAX \
   [--seed-repos "$SEEDS"]      # Q3=recommended seeds OR keywords
   [--keywords "$KW"]            # Q3=keywords only
+  [--min-followers N]           # only if user requested follower-quality filter
+  [--min-public-repos N]        # only if user asked to exclude bot/ghost accounts
+  [--min-account-age-days N]    # only if user wants seasoned accounts
+  [--require-bio]               # only if user wants bios required
   > /tmp/gitmail_recipients.json 2>&1
 ```
 

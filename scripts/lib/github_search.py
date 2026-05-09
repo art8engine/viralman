@@ -26,10 +26,30 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, Iterator, List, Optional
 
 GH_API = "https://api.github.com"
 NOREPLY_RE = re.compile(r"@users\.noreply\.github\.com$", re.IGNORECASE)
+
+
+# --------------------------------------------------------------------------- #
+# Profile data shape returned by bulk_resolve_profile_data                    #
+# --------------------------------------------------------------------------- #
+
+
+PROFILE_KEYS = (
+    "email", "name", "bio", "is_hireable", "created_at",
+    "followers", "following", "public_repos",
+)
+
+
+def _empty_profile() -> Dict[str, Optional[object]]:
+    """Default shape used when GraphQL fails for a login. Callers always read
+    via `.get(key)` so missing fields are safe, but keeping all keys present
+    makes the contract explicit in tests and downstream consumers."""
+    return {k: None for k in PROFILE_KEYS}
 
 
 # --------------------------------------------------------------------------- #
@@ -324,7 +344,7 @@ def bulk_resolve_profile_data(
     is included so PushEvent fallback callers can verify commit authorship
     without re-fetching the profile via REST.
     """
-    out: Dict[str, Dict[str, Optional[str]]] = {}
+    out: Dict[str, Dict[str, Optional[object]]] = {}
     if not logins:
         return out
 
@@ -335,7 +355,15 @@ def bulk_resolve_profile_data(
         parts = []
         for i, login in enumerate(batch):
             esc = json.dumps(login)
-            parts.append(f"u{i}: user(login: {esc}) {{ login email name }}")
+            parts.append(
+                f"u{i}: user(login: {esc}) {{ "
+                f"login email name bio isHireable createdAt "
+                f"followers {{ totalCount }} "
+                f"following {{ totalCount }} "
+                f"repositories(privacy: PUBLIC, ownerAffiliations: OWNER) "
+                f"{{ totalCount }} "
+                f"}}"
+            )
         query = "query { " + " ".join(parts) + " }"
         body = json.dumps({"query": query}).encode("utf-8")
 
@@ -358,13 +386,13 @@ def bulk_resolve_profile_data(
             print(f"graphql: HTTP {e.code} on batch {start}-{start+len(batch)}",
                   file=sys.stderr)
             for login in batch:
-                out.setdefault(login, {"email": None, "name": None})
+                out.setdefault(login, _empty_profile())
             continue
         except Exception as e:
             print(f"graphql: network error on batch {start}: {e}",
                   file=sys.stderr)
             for login in batch:
-                out.setdefault(login, {"email": None, "name": None})
+                out.setdefault(login, _empty_profile())
             continue
 
         _respect_rate_limit(headers)
@@ -373,13 +401,114 @@ def bulk_resolve_profile_data(
         for i, login in enumerate(batch):
             user = data.get(f"u{i}")
             if not isinstance(user, dict):
-                out[login] = {"email": None, "name": None}
+                out[login] = _empty_profile()
                 continue
             email = user.get("email")
             if email and NOREPLY_RE.search(email):
                 email = None
-            out[login] = {"email": email, "name": user.get("name")}
+            followers = (user.get("followers") or {}).get("totalCount")
+            following = (user.get("following") or {}).get("totalCount")
+            public_repos = (user.get("repositories") or {}).get("totalCount")
+            out[login] = {
+                "email": email,
+                "name": user.get("name"),
+                "bio": user.get("bio") or None,
+                "is_hireable": bool(user.get("isHireable")),
+                "created_at": user.get("createdAt"),
+                "followers": followers,
+                "following": following,
+                "public_repos": public_repos,
+            }
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Recipient quality filter                                                    #
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class RecipientFilter:
+    """Bound checks applied to a profile dict from `bulk_resolve_profile_data`.
+
+    None means "do not check this dimension". An active filter keeps a
+    candidate iff every checked dimension passes; the first failing dimension
+    is reported back as the rejection reason."""
+    min_followers: Optional[int] = None
+    max_followers: Optional[int] = None
+    min_following: Optional[int] = None
+    max_following: Optional[int] = None
+    min_public_repos: Optional[int] = None
+    max_public_repos: Optional[int] = None
+    min_account_age_days: Optional[int] = None
+    require_bio: bool = False
+
+    def is_active(self) -> bool:
+        return any((
+            self.min_followers is not None,
+            self.max_followers is not None,
+            self.min_following is not None,
+            self.max_following is not None,
+            self.min_public_repos is not None,
+            self.max_public_repos is not None,
+            self.min_account_age_days is not None,
+            self.require_bio,
+        ))
+
+    def evaluate(self, profile: Dict[str, object]) -> Optional[str]:
+        """Returns None if the profile passes, else the failing-dimension key.
+
+        Missing data (None) is treated as failing any min/max bound — when the
+        user opts into a filter, they're asking for verified profiles only."""
+        followers = profile.get("followers")
+        if self.min_followers is not None:
+            if not isinstance(followers, int) or followers < self.min_followers:
+                return "min_followers"
+        if self.max_followers is not None:
+            if not isinstance(followers, int) or followers > self.max_followers:
+                return "max_followers"
+
+        following = profile.get("following")
+        if self.min_following is not None:
+            if not isinstance(following, int) or following < self.min_following:
+                return "min_following"
+        if self.max_following is not None:
+            if not isinstance(following, int) or following > self.max_following:
+                return "max_following"
+
+        public_repos = profile.get("public_repos")
+        if self.min_public_repos is not None:
+            if not isinstance(public_repos, int) or public_repos < self.min_public_repos:
+                return "min_public_repos"
+        if self.max_public_repos is not None:
+            if not isinstance(public_repos, int) or public_repos > self.max_public_repos:
+                return "max_public_repos"
+
+        if self.min_account_age_days is not None:
+            age = _account_age_days(profile.get("created_at"))
+            if age is None or age < self.min_account_age_days:
+                return "min_account_age_days"
+
+        if self.require_bio:
+            bio = profile.get("bio")
+            if not (isinstance(bio, str) and bio.strip()):
+                return "require_bio"
+
+        return None
+
+
+def _account_age_days(created_at: Optional[object]) -> Optional[int]:
+    if not isinstance(created_at, str) or not created_at:
+        return None
+    s = created_at.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta = datetime.now(timezone.utc) - dt
+    return max(0, delta.days)
 
 
 # --------------------------------------------------------------------------- #

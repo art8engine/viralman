@@ -376,9 +376,31 @@ def _run_collect_job(job: "GitmailJob") -> None:
             return
 
         max_users = min(int(job.args.get("max_users") or 100), 1500)
+
+        def _opt_int(key: str) -> Optional[int]:
+            v = job.args.get(key)
+            if v in (None, "", []):
+                return None
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        recipient_filter = github_search.RecipientFilter(
+            min_followers=_opt_int("min_followers"),
+            max_followers=_opt_int("max_followers"),
+            min_following=_opt_int("min_following"),
+            max_following=_opt_int("max_following"),
+            min_public_repos=_opt_int("min_public_repos"),
+            max_public_repos=_opt_int("max_public_repos"),
+            min_account_age_days=_opt_int("min_account_age_days"),
+            require_bio=bool(job.args.get("require_bio")),
+        )
+
         recipients = step_recipients(
             creds, repos, max_users=max_users,
             sink=job_sink, cancel_check=cancelled,
+            recipient_filter=recipient_filter,
         )
         job_sink("done", recipients=recipients, analysis=analysis)
     except Exception as e:
